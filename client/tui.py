@@ -85,12 +85,19 @@ def create_message_widget(message_data: dict) -> Static:
             feedback = format_content(data.get('feedback', ''), 100)
             text = f"🔄 REINTENTO ({attempt}/{max_attempts})\n{feedback}"
             css_class = "retry-attempt"
+        elif msg_type == "executive_summary":
+            # Nuevo tipo de mensaje para resumen ejecutivo
+            summary = data.get('summary', 'Resumen no disponible')
+            agent_role = data.get('agent_role', 'Agent')
+            text = f"📈 RESUMEN EJECUTIVO ({agent_role.upper()})\n\n{summary}\n\n{'*' * 60}"
+            css_class = "executive-summary"
         elif msg_type == "phase_end":
             status = data.get("status", "DESCONOCIDO")
             reason = data.get("reason", "")
             text = f"🏁 FASE FINALIZADA: {data.get('name', '')} - {status}"
             if reason:
                 text += f"\n{format_content(reason, 100)}"
+            text += f"\n{'#' * 60}"
             css_class = "phase-end"
         else:  # info
             message = format_content(data.get('message', ''), 100)
@@ -100,7 +107,7 @@ def create_message_widget(message_data: dict) -> Static:
     elif "Agent" in source:
         if msg_type == "thought":
             content = format_content(data.get('content', ''), 110)
-            text = f"🤔 PENSAMIENTO ({source})\n{content}"
+            text = f"🤔 PENSAMIENTO ({source})\n{content}\n{'-' * 50}"
             css_class = "agent-thought"
         elif msg_type == "action":
             tool = data.get('tool', 'unknown')
@@ -111,7 +118,7 @@ def create_message_widget(message_data: dict) -> Static:
                     args_str += f" ({args.get('content_length', 0)} chars)"
             else:
                 args_str = str(args)[:50] + ("..." if len(str(args)) > 50 else "")
-            text = f"⚡ ACCIÓN ({source}): {tool}\n{args_str}"
+            text = f"⚡ ACCIÓN ({source}): {tool}\n{args_str}\n{'=' * 50}"
             css_class = "agent-action"
         elif msg_type == "error":
             message = format_content(data.get('message', ''), 100)
@@ -200,7 +207,7 @@ class DirGenTUI(App):
             logger.error(f"Error en log_message: {str(e)}")
     
     def _write_to_tui(self, message: str):
-        """Escribe mensaje a la TUI con autoscroll garantizado"""
+        """Escribe mensaje a la TUI con autoscroll garantizado y espaciado mejorado"""
         try:
             log = self.query_one("#main-log", Log)
             if log:
@@ -209,7 +216,10 @@ class DirGenTUI(App):
                     message = message[:997] + "..."
                 
                 logger.debug(f"Writing to TUI: {message[:100]}...")
+                # Agregar el mensaje
                 log.write_line(message)
+                # Agregar línea vacía para separar mensajes
+                log.write_line("")
                 # Forzar scroll al final
                 log.scroll_end(animate=False)
                 logger.debug("Message written to TUI successfully")
@@ -398,12 +408,18 @@ class DirGenTUI(App):
                 max_attempts = data.get('max_attempts', '?')
                 feedback = format_content(data.get('feedback', ''), 100)
                 return f"🔄 REINTENTO ({attempt}/{max_attempts})\n{feedback}"
+            elif msg_type == "executive_summary":
+                # Nuevo tipo de mensaje para resumen ejecutivo
+                summary = data.get('summary', 'Resumen no disponible')
+                agent_role = data.get('agent_role', 'Agent')
+                return f"📈 RESUMEN EJECUTIVO ({agent_role.upper()})\n\n{summary}\n\n{'*' * 60}"
             elif msg_type == "phase_end":
                 status = data.get("status", "DESCONOCIDO")
                 reason = data.get("reason", "")
                 text = f"🏁 FASE FINALIZADA: {data.get('name', '')} - {status}"
                 if reason:
                     text += f"\n{format_content(reason, 100)}"
+                text += f"\n{'#' * 60}"
                 return text
             else:  # info
                 message = format_content(data.get('message', ''), 100)
@@ -412,7 +428,7 @@ class DirGenTUI(App):
         elif "Agent" in source:
             if msg_type == "thought":
                 content = format_content(data.get('content', ''), 110)
-                return f"🤔 PENSAMIENTO ({source})\n{content}"
+                return f"🤔 PENSAMIENTO ({source})\n{content}\n{'-' * 50}"
             elif msg_type == "action":
                 tool = data.get('tool', 'unknown')
                 args = data.get('args', {})
@@ -422,7 +438,7 @@ class DirGenTUI(App):
                         args_str += f" ({args.get('content_length', 0)} chars)"
                 else:
                     args_str = str(args)[:50] + ("..." if len(str(args)) > 50 else "")
-                return f"⚡ ACCIÓN ({source}): {tool}\n{args_str}"
+                return f"⚡ ACCIÓN ({source}): {tool}\n{args_str}\n{'=' * 50}"
             elif msg_type == "error":
                 message = format_content(data.get('message', ''), 100)
                 return f"❌ ERROR ({source})\n{message}"

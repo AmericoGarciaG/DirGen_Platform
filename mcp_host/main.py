@@ -89,6 +89,7 @@ async def agent_task_complete(run_id: str, request: Request):
     data = await request.json()
     agent_role = data.get("role")
     task_status = data.get("status", "success")
+    summary = data.get("summary")  # Nuevo campo para el resumen ejecutivo
     
     if agent_role == "planner":
         if task_status == "impossible":
@@ -109,9 +110,43 @@ async def agent_task_complete(run_id: str, request: Request):
                     "reason": f"Agente declaró tarea imposible: {reason}"
                 }
             })
+        elif task_status == "failed":
+            # Auto-verificación falló
+            reason = data.get("reason", "Auto-verificación falló")
+            logger.warning(f"Planner verification failed for {run_id}: {reason}")
+            
+            await manager.broadcast(run_id, {
+                "source": "Orchestrator", 
+                "type": "phase_end", 
+                "data": {
+                    "name": "Diseño", 
+                    "status": "RECHAZADO", 
+                    "reason": f"Verificación falló: {reason}"
+                }
+            })
+        elif task_status == "incomplete":
+            # Tarea incompleta - mantener lógica existente de reintentos
+            reason = data.get("reason", "Tarea incompleta")
+            logger.warning(f"Planner task incomplete for {run_id}: {reason}")
+            
+            # Tratar como fallo de validación para activar reintentos
+            await handle_validation_failure(run_id, reason)
         else:
-            # Tarea completada normalmente - proceder con validación
-            await manager.broadcast(run_id, {"source": "Orchestrator", "type": "info", "data": {"message": "Agente Planificador ha finalizado. Iniciando Quality Gate 1."}})
+            # Tarea completada exitosamente 
+            if summary:
+                # Mostrar resumen ejecutivo de forma destacada
+                await manager.broadcast(run_id, {
+                    "source": "Orchestrator", 
+                    "type": "executive_summary", 
+                    "data": {
+                        "summary": summary,
+                        "agent_role": "planner"
+                    }
+                })
+                logger.info(f"Executive summary sent to TUI for {run_id}")
+            
+            # Proceder con validación como siempre
+            await manager.broadcast(run_id, {"source": "Orchestrator", "type": "info", "data": {"message": "Agente Planificador ha finalizado exitosamente. Iniciando Quality Gate 1."}})
             
             # Necesitamos el contenido del PCCE de nuevo para el Validador
             temp_dir = tempfile.gettempdir()

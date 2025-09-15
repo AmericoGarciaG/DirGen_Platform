@@ -122,3 +122,15 @@ Log {
     margin: 0;
     height: 100%;
 }
+
+/* === RESUMEN EJECUTIVO - ESTILO DESTACADO === */
+.executive-summary {
+    background: #21262d;
+    color: #58a6ff;
+    text-style: bold;
+    border: thick #58a6ff;
+    border-title-color: #58a6ff;
+    border-title-style: bold;
+    padding: 1;
+    margin: 1;
+}

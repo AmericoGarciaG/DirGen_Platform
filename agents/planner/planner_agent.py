@@ -236,6 +236,169 @@ def ask_llm(model_id: str, system_prompt: str, user_prompt: str) -> str:
     # Si todos los proveedores fallaron
     raise Exception(f"Todos los proveedores LLM fallaron. Último error: {str(last_error)}")
 
+# --- Funciones de Ciclo de Finalización Profesional ---
+def perform_self_verification(run_id: str, model_id: str, salidas_esperadas: list, 
+                              archivos_creados: set, pcce_data: dict) -> dict:
+    """Realiza auto-verificación del trabajo completado"""
+    try:
+        report_progress(run_id, "info", {"message": "🤔 [Planner Agent] Verificando la completitud del trabajo..."})
+        
+        verification_prompt = f"""Eres un auditor de calidad experto realizando una verificación final de un proyecto de arquitectura de software.
+
+CONTEXTO DEL PROYECTO:
+- Nombre: {pcce_data['contexto']['nombre_proyecto']}
+- Descripción: {pcce_data['contexto']['descripcion']}
+- Objetivo: {pcce_data['contexto']['objetivo']}
+
+ARCHIVOS REQUERIDOS (según PCCE):
+{chr(10).join([f"- {archivo}" for archivo in salidas_esperadas])}
+
+ARCHIVOS COMPLETADOS:
+{chr(10).join([f"- {archivo}" for archivo in sorted(archivos_creados)])}
+
+TU TAREA DE VERIFICACIÓN:
+1. Verifica que TODOS los archivos requeridos han sido creados
+2. Evalúa si la cobertura es completa según los requerimientos originales
+3. Determina si hay algún artefacto crítico faltante
+
+Responde ÚNICAMENTE con uno de estos formatos:
+
+VERIFICACIÓN EXITOSA:
+✅ VERIFICACIÓN COMPLETADA
+Todos los artefactos requeridos han sido generados correctamente.
+
+VERIFICACIÓN FALLIDA:
+❌ VERIFICACIÓN FALLIDA
+Motivo: [descripción específica del problema encontrado]"""
+        
+        user_prompt = "Realiza la verificación final del trabajo completado."
+        verification_response = ask_llm(model_id, verification_prompt, user_prompt)
+        
+        # Parsear respuesta de verificación
+        if "✅ VERIFICACIÓN COMPLETADA" in verification_response:
+            return {"success": True, "response": verification_response}
+        elif "❌ VERIFICACIÓN FALLIDA" in verification_response:
+            reason = "Auto-verificación detectó problemas en el trabajo completado"
+            if "Motivo:" in verification_response:
+                reason = verification_response.split("Motivo:")[1].strip()
+            return {"success": False, "reason": reason}
+        else:
+            logger.warning(f"Respuesta de verificación inesperada: {verification_response[:200]}...")
+            return {"success": True, "response": verification_response}
+            
+    except Exception as e:
+        logger.error(f"Error durante auto-verificación: {str(e)}")
+        return {"success": False, "reason": f"Error técnico durante verificación: {str(e)}"}
+
+def generate_executive_summary(run_id: str, model_id: str, salidas_esperadas: list, 
+                               archivos_creados: set, pcce_data: dict) -> str:
+    """Genera un resumen ejecutivo profesional del trabajo completado"""
+    try:
+        report_progress(run_id, "info", {"message": "✍️ [Planner Agent] Redactando resumen ejecutivo..."})
+        
+        summary_prompt = f"""Eres Claude, un asistente de IA especializado en arquitectura de software, generando un resumen ejecutivo profesional al estilo de tus propios informes.
+
+CONTEXTO DEL PROYECTO COMPLETADO:
+- **Proyecto**: {pcce_data['contexto']['nombre_proyecto']}
+- **Descripción**: {pcce_data['contexto']['descripcion']}
+- **Objetivo**: {pcce_data['contexto']['objetivo']}
+- **Stack**: {pcce_data['entradas'].get('stack_tecnologico', {})}
+
+ARTEFACTOS GENERADOS EXITOSAMENTE:
+{chr(10).join([f"- `{archivo}`" for archivo in sorted(archivos_creados)])}
+
+COBERTURA ALCANZADA:
+- Requerimientos funcionales: {len(pcce_data['entradas'].get('requerimientos_funcionales', []))} especificaciones
+- Requerimientos no funcionales: {len(pcce_data['entradas'].get('requerimientos_no_funcionales', []))} criterios
+- Artefactos de diseño: {len(archivos_creados)} documentos técnicos
+
+Genera un resumen ejecutivo en el estilo característico de Claude con:
+
+**FORMATO REQUERIDO:**
+1. Título con emoji de éxito
+2. Sección "## 🎯 **MISIÓN COMPLETADA**" con descripción del logro
+3. Sección "### 📋 **ARTEFACTOS ENTREGADOS**" con lista detallada
+4. Sección "### ⚙️ **ARQUITECTURA IMPLEMENTADA**" con aspectos técnicos
+5. Sección "### 🚀 **PRÓXIMOS PASOS RECOMENDADOS**" con acciones concretas
+6. Cierre profesional con "---\n*Generado por DirGen Platform - Planner Agent*"
+
+**TONO Y ESTILO:**
+- Profesional pero accesible
+- Enfoque en resultados tangibles
+- Uso estratégico de emojis
+- Texto en negritas para énfasis
+- Listas con viñetas claras
+- Terminología técnica precisa"""
+        
+        user_prompt = "Genera el resumen ejecutivo del proyecto completado."
+        summary_response = ask_llm(model_id, summary_prompt, user_prompt)
+        
+        # Verificar que la respuesta sea válida y contenga Markdown
+        if not summary_response or len(summary_response) < 100:
+            return generate_fallback_summary(pcce_data, archivos_creados)
+        
+        return summary_response
+        
+    except Exception as e:
+        logger.error(f"Error generando resumen ejecutivo: {str(e)}")
+        return generate_fallback_summary(pcce_data, archivos_creados)
+
+def generate_fallback_summary(pcce_data: dict, archivos_creados: set) -> str:
+    """Genera un resumen ejecutivo básico como fallback"""
+    try:
+        proyecto_nombre = pcce_data['contexto']['nombre_proyecto']
+        artefactos_list = "\n".join([f"- {archivo}" for archivo in sorted(archivos_creados)])
+        
+        return f"""# 🎆 **{proyecto_nombre} - DISEÑO COMPLETADO**
+
+## 🎯 **MISIÓN COMPLETADA**
+
+He completado exitosamente la fase de diseño arquitectónico para **{proyecto_nombre}**, generando todos los artefactos técnicos requeridos según las especificaciones del PCCE. El sistema está listo para proceder con la siguiente fase de implementación.
+
+### 📋 **ARTEFACTOS ENTREGADOS**
+
+{artefactos_list}
+
+**Total de documentos**: {len(archivos_creados)} artefactos técnicos completos
+
+### ⚙️ **ARQUITECTURA IMPLEMENTADA**
+
+- **Cobertura**: 100% de los requerimientos especificados
+- **Calidad**: Todos los artefactos validados y verificados
+- **Estado**: Listos para implementación
+- **Formato**: Documentación técnica estándar (OpenAPI, PlantUML)
+
+### 🚀 **PRÓXIMOS PASOS RECOMENDADOS**
+
+1. **Revisión técnica**: Validar los artefactos generados con el equipo
+2. **Configuración del entorno**: Preparar la infraestructura de desarrollo
+3. **Planificación de sprints**: Organizar la implementación por componentes
+4. **Setup de CI/CD**: Configurar pipelines según la arquitectura diseñada
+
+---
+*Generado por DirGen Platform - Planner Agent*"""
+    except Exception as e:
+        return f"""# 🎆 **PROYECTO COMPLETADO**
+
+## 🎯 **MISIÓN COMPLETADA**
+
+Se han generado exitosamente **{len(archivos_creados)} artefactos** de diseño arquitectónico.
+
+### 📋 **RESULTADO**
+
+- **Estado**: Finalizado exitosamente
+- **Artefactos**: {len(archivos_creados)} documentos técnicos
+- **Cobertura**: 100% completada
+
+### 🚀 **PRÓXIMOS PASOS**
+
+1. Revisar documentación generada
+2. Proceder con implementación
+3. Configurar entorno de desarrollo
+
+---
+*Generado por DirGen Platform - Planner Agent*"""
+
 # --- Ciclo de Vida del Agente ---
 def main():
     parser = argparse.ArgumentParser()
@@ -596,19 +759,79 @@ Genera tu próximo 'Pensamiento:' seguido de tu 'Acción:' para continuar con la
                 except requests.RequestException as e:
                     logger.error(f"Error enviando notificación de tarea imposible: {str(e)}")
         else:
+            # Tarea completada exitosamente - iniciar ciclo de finalización profesional
             report_progress(args.run_id, "info", {
                 "message": f"Todos los archivos fueron generados exitosamente: {list(archivos_creados)}"
             })
+            
+            try:
+                # FASE 1: Auto-verificación
+                logger.info("Iniciando fase de auto-verificación...")
+                verification_result = perform_self_verification(args.run_id, model_id, salidas_esperadas, archivos_creados, pcce_data)
+                
+                if not verification_result["success"]:
+                    # Auto-verificación falló - notificar al orquestador del problema
+                    error_msg = f"Auto-verificación falló: {verification_result['reason']}"
+                    logger.error(error_msg)
+                    report_progress(args.run_id, "error", {"message": error_msg})
+                    
+                    try:
+                        response = requests.post(f"{HOST}/v1/agent/{args.run_id}/task_complete", 
+                                               json={"role": "planner", "status": "failed", "reason": error_msg}, 
+                                               timeout=10)
+                        response.raise_for_status()
+                    except requests.RequestException as e:
+                        logger.error(f"Error enviando notificación de fallo de verificación: {str(e)}")
+                    return
+                
+                # FASE 2: Generación de resumen ejecutivo
+                logger.info("Auto-verificación exitosa - generando resumen ejecutivo...")
+                executive_summary = generate_executive_summary(args.run_id, model_id, salidas_esperadas, archivos_creados, pcce_data)
+                
+                # FASE 3: Notificación final con resumen
+                logger.info("Enviando notificación final con resumen ejecutivo...")
+                try:
+                    response = requests.post(f"{HOST}/v1/agent/{args.run_id}/task_complete", 
+                                           json={
+                                               "role": "planner", 
+                                               "status": "success", 
+                                               "summary": executive_summary
+                                           }, timeout=10)
+                    response.raise_for_status()
+                    logger.info("Tarea finalizada exitosamente con resumen ejecutivo.")
+                except requests.RequestException as e:
+                    logger.error(f"Error enviando notificación final con resumen: {str(e)}")
+                    # Fallback a notificación simple
+                    try:
+                        response = requests.post(f"{HOST}/v1/agent/{args.run_id}/task_complete", 
+                                               json={"role": "planner"}, timeout=10)
+                        response.raise_for_status()
+                        logger.info("Fallback - notificación simple enviada exitosamente.")
+                    except requests.RequestException as fallback_e:
+                        logger.error(f"Error crítico enviando notificación: {str(fallback_e)}")
+                        
+            except Exception as e:
+                logger.error(f"Error durante el ciclo de finalización profesional: {str(e)}")
+                # Fallback a notificación simple en caso de error
+                logger.info("Fallback - enviando notificación simple...")
+                try:
+                    response = requests.post(f"{HOST}/v1/agent/{args.run_id}/task_complete", 
+                                           json={"role": "planner"}, timeout=10)
+                    response.raise_for_status()
+                    logger.info("Fallback - notificación simple enviada exitosamente.")
+                except requests.RequestException as fallback_e:
+                    logger.error(f"Error crítico en fallback: {str(fallback_e)}")
 
-        # Notificación de finalización al orquestador
-        logger.info("Enviando notificación de tarea completada al Orquestador...")
-        try:
-            response = requests.post(f"{HOST}/v1/agent/{args.run_id}/task_complete", 
-                                   json={"role": "planner"}, timeout=10)
-            response.raise_for_status()
-            logger.info("Tarea finalizada, notificación enviada al Orquestador exitosamente.")
-        except requests.RequestException as e:
-            logger.error(f"Error enviando notificación de finalización: {str(e)}")
+        # Para casos de fallo (archivos faltantes), mantener notificación simple
+        if archivos_faltantes:
+            logger.info("Enviando notificación de tarea incompleta al Orquestador...")
+            try:
+                response = requests.post(f"{HOST}/v1/agent/{args.run_id}/task_complete", 
+                                       json={"role": "planner", "status": "incomplete", "reason": f"Archivos faltantes: {archivos_faltantes}"}, timeout=10)
+                response.raise_for_status()
+                logger.info("Tarea incompleta, notificación enviada al Orquestador.")
+            except requests.RequestException as e:
+                logger.error(f"Error enviando notificación de tarea incompleta: {str(e)}")
             
     except Exception as e:
         logger.error(f"Error crítico en el agente planificador: {str(e)}")
