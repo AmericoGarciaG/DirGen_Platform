@@ -20,19 +20,14 @@ LOG_FILE = LOG_DIR / f"tui_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
 logger = logging.getLogger("DirGenTUI")
 logger.setLevel(logging.DEBUG)
 
-# Handler para archivo
+# Handler para archivo - SOLO archivo, no consola para evitar doble salida en TUI
 file_handler = logging.FileHandler(LOG_FILE, encoding='utf-8')
 file_handler.setLevel(logging.DEBUG)
 file_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(file_format)
 logger.addHandler(file_handler)
 
-# Handler para consola
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-console_format = logging.Formatter('%(levelname)s: %(message)s')
-console_handler.setFormatter(console_format)
-logger.addHandler(console_handler)
+# NO agregar console handler - el TUI maneja la salida visual
 
 # --- Utilidades de formateo ---
 def wrap_text(text: str, width: int = 80) -> str:
@@ -186,11 +181,13 @@ class DirGenTUI(App):
                     if len(message) > 500:  # Limitar longitud máxima
                         display_message = message[:497] + "..."
                     
-                    # Si estamos en un hilo diferente, usamos call_from_thread
-                    if hasattr(self, '_loop') and asyncio.get_event_loop() != self._loop:
-                        self.call_from_thread(log.write_line, display_message)
-                    else:
+                    # Escribir directamente al log - el TUI maneja el threading internamente
+                    try:
                         log.write_line(display_message)
+                    except Exception as write_error:
+                        # Si hay error de threading, usar call_from_thread como fallback
+                        if hasattr(self, 'call_from_thread'):
+                            self.call_from_thread(log.write_line, display_message)
             except Exception:
                 # Si no se puede obtener el log, simplemente continuar
                 pass

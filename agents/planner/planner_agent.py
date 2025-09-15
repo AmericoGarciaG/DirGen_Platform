@@ -240,6 +240,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--pcce-path", required=True)
+    parser.add_argument("--feedback", help="Feedback del validador en caso de reintento")
     args = parser.parse_args()
 
     try:
@@ -295,7 +296,7 @@ Para los archivos .yml: Genera especificaciones OpenAPI 3.0 válidas y completas
 
 Cuando hayas creado TODOS los archivos requeridos, tu último pensamiento debe contener exactamente: "Conclusión: Todos los artefactos de diseño han sido generados."""
         
-        # Inicializar el historial con el contexto completo del proyecto
+        # Inicializar el historial con el contexto completo del proyecto y feedback si existe
         history = f"""CONTEXTO DEL PROYECTO:
 {yaml.dump(project_context, indent=2)}
 
@@ -305,10 +306,19 @@ ARCHIVOS A GENERAR:
 OBJETIVO FINAL: {objetivo_final}
 
 HISTORIAL DE EJECUCIÓN:"""
+        
+        # Inyectar feedback si está presente (reintento)
+        if args.feedback:
+            history += f"\n\nFEEDBACK DE REINTENTO: En el intento anterior fallaste. El feedback fue: {args.feedback}\nTu tarea es analizar este error y continuar el trabajo para generar los archivos faltantes o corregir los existentes.\n"
+            report_progress(args.run_id, "info", {"message": f"Procesando feedback de reintento: {args.feedback[:100]}..."})
 
         archivos_creados = set()
-        max_iterations = len(salidas_esperadas) + 3  # Un poco de buffer por seguridad
+        max_iterations = len(salidas_esperadas) + 5  # Buffer para reintentos
         iteration = 0
+        
+        # Contador de estrategias fallidas para detectar si la tarea es imposible
+        repeated_failures = 0
+        last_error_pattern = None
 
         logger.info(f"Iniciando ciclo ReAct para generar {len(salidas_esperadas)} archivos")
         
@@ -356,6 +366,22 @@ Genera tu próximo 'Pensamiento:' seguido de tu 'Acción:' para continuar con la
             # Verificar condición de terminación
             # Solo terminar si realmente se han creado TODOS los archivos requeridos
             archivos_faltantes_actuales = [archivo for archivo in salidas_esperadas if archivo not in archivos_creados]
+            
+            # Detectar si el agente está declarando la tarea como imposible
+            if "IMPOSIBLE" in thought.upper() and ("no puedo" in thought.lower() or "imposible" in thought.lower()):
+                logger.warning("Agente declarando tarea como IMPOSIBLE")
+                reason = f"Agente determinó que la tarea es imposible: {thought}"
+                try:
+                    response = requests.post(f"{HOST}/v1/agent/{args.run_id}/task_complete", 
+                                           json={"role": "planner", "status": "impossible", "reason": reason}, 
+                                           timeout=10)
+                    response.raise_for_status()
+                    logger.info("Notificación de tarea imposible enviada al Orquestador")
+                    return
+                except requests.RequestException as e:
+                    logger.error(f"Error enviando notificación de tarea imposible: {str(e)}")
+                    return
+            
             if "Conclusión:" in thought and "todos los artefactos" in thought.lower():
                 if len(archivos_faltantes_actuales) == 0:
                     logger.info("Condición de terminación detectada - todos los archivos han sido creados")
@@ -448,6 +474,29 @@ Genera tu próximo 'Pensamiento:' seguido de tu 'Acción:' para continuar con la
                 logger.error(error_msg)
                 report_progress(args.run_id, "error", {"message": error_msg})
                 history += f"\n\nIteración {iteration}:\nPensamiento: {thought}\nError: {error_msg}"
+                
+                # Detectar patrones de errores repetidos
+                current_error_pattern = str(e)[:50]  # Primeros 50 caracteres del error
+                if current_error_pattern == last_error_pattern:
+                    repeated_failures += 1
+                else:
+                    repeated_failures = 1
+                    last_error_pattern = current_error_pattern
+                
+                # Si el mismo error se repite muchas veces, considerar declarar la tarea imposible
+                if repeated_failures >= 3:
+                    logger.warning(f"Error repetido {repeated_failures} veces: {current_error_pattern}")
+                    reason = f"Error repetido múltiples veces: {error_msg}. No se puede resolver automáticamente."
+                    try:
+                        response = requests.post(f"{HOST}/v1/agent/{args.run_id}/task_complete", 
+                                               json={"role": "planner", "status": "impossible", "reason": reason}, 
+                                               timeout=10)
+                        response.raise_for_status()
+                        logger.info("Notificación de tarea imposible enviada por errores repetidos")
+                        return
+                    except requests.RequestException as req_e:
+                        logger.error(f"Error enviando notificación de tarea imposible: {str(req_e)}")
+                        return
             
             # Pequeña pausa entre iteraciones
             time.sleep(1)
@@ -460,9 +509,23 @@ Genera tu próximo 'Pensamiento:' seguido de tu 'Acción:' para continuar con la
         # Reporte final del estado
         archivos_faltantes = [archivo for archivo in salidas_esperadas if archivo not in archivos_creados]
         if archivos_faltantes:
-            report_progress(args.run_id, "warning", {
-                "message": f"Algunos archivos no fueron generados: {archivos_faltantes}"
-            })
+            # Si llegamos aquí y aún faltan archivos, puede ser que debamos declarar la tarea como imposible
+            warning_msg = f"Algunos archivos no fueron generados: {archivos_faltantes}"
+            logger.warning(warning_msg)
+            report_progress(args.run_id, "warning", {"message": warning_msg})
+            
+            # Si estamos en un reintento y aún faltan archivos tras agotar iteraciones, declarar imposible
+            if args.feedback and iteration >= max_iterations:
+                reason = f"Tras {iteration} iteraciones y reintentos, no se pudieron generar: {archivos_faltantes}"
+                try:
+                    response = requests.post(f"{HOST}/v1/agent/{args.run_id}/task_complete", 
+                                           json={"role": "planner", "status": "impossible", "reason": reason}, 
+                                           timeout=10)
+                    response.raise_for_status()
+                    logger.info("Tarea declarada imposible tras agotar reintentos")
+                    return
+                except requests.RequestException as e:
+                    logger.error(f"Error enviando notificación de tarea imposible: {str(e)}")
         else:
             report_progress(args.run_id, "info", {
                 "message": f"Todos los archivos fueron generados exitosamente: {list(archivos_creados)}"

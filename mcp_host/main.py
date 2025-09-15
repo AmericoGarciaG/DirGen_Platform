@@ -20,6 +20,10 @@ app = FastAPI(title="DirGen Orchestrator")
 ACTIVE_PROCESSES = {}
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
+# Estados de reintento por run_id
+RETRY_STATES = {}
+MAX_RETRIES = 3
+
 # --- Gestor de Conexiones WebSocket ---
 class ConnectionManager:
     def __init__(self): self.active_connections: dict[str, WebSocket] = {}
@@ -36,7 +40,7 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 # --- Lógica de Orquestación de Fases ---
-async def run_phase_1_design(run_id: str, pcce_content: bytes):
+async def run_phase_1_design(run_id: str, pcce_content: bytes, feedback: str = None):
     await manager.broadcast(run_id, {"source": "Orchestrator", "type": "phase_start", "data": {"name": "Diseño"}})
     
     temp_dir = tempfile.gettempdir()
@@ -45,6 +49,11 @@ async def run_phase_1_design(run_id: str, pcce_content: bytes):
 
     agent_script_path = PROJECT_ROOT / "agents" / "planner" / "planner_agent.py"
     agent_command = [sys.executable, str(agent_script_path), "--run-id", run_id, "--pcce-path", temp_pcce_path]
+    
+    # Agregar feedback si está presente
+    if feedback:
+        agent_command.extend(["--feedback", feedback])
+        await manager.broadcast(run_id, {"source": "Orchestrator", "type": "info", "data": {"message": f"Reinvocando Agente Planificador con feedback: {feedback[:100]}..."}})
     
     process = subprocess.Popen(agent_command)
     ACTIVE_PROCESSES[f"{run_id}_planner"] = process
@@ -79,16 +88,37 @@ async def start_run(pcce_file: UploadFile = File(...)):
 async def agent_task_complete(run_id: str, request: Request):
     data = await request.json()
     agent_role = data.get("role")
+    task_status = data.get("status", "success")
     
     if agent_role == "planner":
-        await manager.broadcast(run_id, {"source": "Orchestrator", "type": "info", "data": {"message": "Agente Planificador ha finalizado. Iniciando Quality Gate 1."}})
-        
-        # Necesitamos el contenido del PCCE de nuevo para el Validador
-        temp_dir = tempfile.gettempdir()
-        temp_pcce_path = os.path.join(temp_dir, f"{run_id}_pcce.yml")
-        with open(temp_pcce_path, "rb") as f: pcce_content = f.read()
+        if task_status == "impossible":
+            # El agente declaró la tarea como imposible
+            reason = data.get("reason", "El agente determinó que la tarea no es posible de completar")
+            logger.warning(f"Planner declared task impossible for {run_id}: {reason}")
+            
+            # Limpiar estado de reintentos
+            if run_id in RETRY_STATES:
+                del RETRY_STATES[run_id]
+            
+            await manager.broadcast(run_id, {
+                "source": "Orchestrator", 
+                "type": "phase_end", 
+                "data": {
+                    "name": "Diseño", 
+                    "status": "RECHAZADO", 
+                    "reason": f"Agente declaró tarea imposible: {reason}"
+                }
+            })
+        else:
+            # Tarea completada normalmente - proceder con validación
+            await manager.broadcast(run_id, {"source": "Orchestrator", "type": "info", "data": {"message": "Agente Planificador ha finalizado. Iniciando Quality Gate 1."}})
+            
+            # Necesitamos el contenido del PCCE de nuevo para el Validador
+            temp_dir = tempfile.gettempdir()
+            temp_pcce_path = os.path.join(temp_dir, f"{run_id}_pcce.yml")
+            with open(temp_pcce_path, "rb") as f: pcce_content = f.read()
 
-        asyncio.create_task(run_quality_gate_1(run_id, pcce_content))
+            asyncio.create_task(run_quality_gate_1(run_id, pcce_content))
 
     return {"status": "acknowledged"}
 
@@ -98,12 +128,78 @@ async def validation_result(run_id: str, request: Request):
     await manager.broadcast(run_id, {"source": "Orchestrator", "type": "quality_gate_result", "data": result})
     
     if result.get("success"):
-        # Aquí transicionaríamos a la Fase 2
+        # Validación exitosa - limpiar estado de reintentos y aprobar fase
+        if run_id in RETRY_STATES:
+            del RETRY_STATES[run_id]
         await manager.broadcast(run_id, {"source": "Orchestrator", "type": "phase_end", "data": {"name": "Diseño", "status": "APROBADO"}})
     else:
-        # Aquí podríamos re-invocar al planner con feedback
-        await manager.broadcast(run_id, {"source": "Orchestrator", "type": "phase_end", "data": {"name": "Diseño", "status": "RECHAZADO"}})
+        # Validación fallida - implementar lógica de reintentos
+        await handle_validation_failure(run_id, result.get("message", "Error desconocido"))
+    
     return {"status": "processed"}
+
+async def handle_validation_failure(run_id: str, error_message: str):
+    """Maneja fallos de validación con lógica de reintentos inteligente"""
+    # Inicializar estado de reintentos si no existe
+    if run_id not in RETRY_STATES:
+        RETRY_STATES[run_id] = {
+            "retry_count": 0,
+            "feedback_history": []
+        }
+    
+    retry_state = RETRY_STATES[run_id]
+    retry_state["retry_count"] += 1
+    retry_state["feedback_history"].append(error_message)
+    
+    logger.info(f"Validation failed for {run_id}. Attempt {retry_state['retry_count']}/{MAX_RETRIES}")
+    
+    if retry_state["retry_count"] <= MAX_RETRIES:
+        # Construir feedback enriquecido
+        feedback = f"Intento {retry_state['retry_count']}/{MAX_RETRIES}. Error: {error_message}"
+        
+        # Agregar contexto de intentos anteriores si existe
+        if len(retry_state["feedback_history"]) > 1:
+            prev_errors = "; ".join(retry_state["feedback_history"][:-1])
+            feedback += f" Errores anteriores: {prev_errors}"
+        
+        await manager.broadcast(run_id, {
+            "source": "Orchestrator", 
+            "type": "retry_attempt", 
+            "data": {
+                "attempt": retry_state["retry_count"],
+                "max_attempts": MAX_RETRIES,
+                "feedback": feedback
+            }
+        })
+        
+        # Re-invocar al planner con feedback
+        temp_dir = tempfile.gettempdir()
+        temp_pcce_path = os.path.join(temp_dir, f"{run_id}_pcce.yml")
+        
+        if os.path.exists(temp_pcce_path):
+            with open(temp_pcce_path, "rb") as f:
+                pcce_content = f.read()
+            asyncio.create_task(run_phase_1_design(run_id, pcce_content, feedback))
+        else:
+            logger.error(f"No se pudo encontrar el archivo PCCE para {run_id}")
+            await manager.broadcast(run_id, {
+                "source": "Orchestrator", 
+                "type": "phase_end", 
+                "data": {"name": "Diseño", "status": "RECHAZADO", "reason": "Archivo PCCE no encontrado"}
+            })
+    else:
+        # Se agotaron los reintentos
+        logger.warning(f"Maximum retries exceeded for {run_id}")
+        del RETRY_STATES[run_id]
+        await manager.broadcast(run_id, {
+            "source": "Orchestrator", 
+            "type": "phase_end", 
+            "data": {
+                "name": "Diseño", 
+                "status": "RECHAZADO", 
+                "reason": f"Se agotaron los {MAX_RETRIES} reintentos. Último error: {error_message}"
+            }
+        })
 
 @app.websocket("/ws/{run_id}")
 async def websocket_endpoint(websocket: WebSocket, run_id: str):
