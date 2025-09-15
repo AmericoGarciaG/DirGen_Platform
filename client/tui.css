@@ -1,0 +1,92 @@
+/* === TEMA PRINCIPAL === */
+Screen {
+    background: #0f0f23;
+    color: #ffffff;
+}
+
+/* === HEADER === */
+Header {
+    background: #1e1e3f;
+    color: #00ff00;
+    border: round #00ff00;
+    text-align: center;
+    height: 3;
+}
+
+/* === FOOTER === */
+Footer {
+    background: #1e1e3f;
+    color: #cccccc;
+    border: round #444444;
+}
+
+/* === CONTAINER PRINCIPAL === */
+Container {
+    margin: 1;
+    background: #1a1a2e;
+    border: round #16213e;
+}
+
+/* === LOG PRINCIPAL === */
+Log {
+    padding: 1;
+    border: round #00ff88;
+    background: #0d1117;
+    color: #ffffff;
+    scrollbar-background: #21262d;
+    scrollbar-color: #00ff88;
+    scrollbar-corner-color: #0d1117;
+    height: 100%;
+    max-height: 100%;
+}
+
+/* === WIDGETS ESPECIALES === */
+.status-panel {
+    background: #1e2124;
+    border: round #7289da;
+    padding: 1;
+    margin: 1;
+    color: #ffffff;
+}
+
+.message-container {
+    background: transparent;
+    padding: 0 1;
+    margin: 0;
+}
+
+.message-text {
+    background: transparent;
+    color: #ffffff;
+}
+
+/* === ELEMENTOS ESPECÍFICOS === */
+#main_container {
+    height: 100%;
+    width: 100%;
+    padding: 0;
+}
+
+#status_header {
+    height: 3;
+    min-height: 3;
+    max-height: 3;
+    background: #2f3349;
+    border: round #7289da;
+    margin: 0 1 0 1;
+    padding: 1;
+}
+
+#log_view {
+    height: 1fr;
+    min-height: 10;
+    background: #0d1117;
+    border: round #00ff88;
+    margin: 1 1 1 1;
+    padding: 1;
+    scrollbar-background: #21262d;
+    scrollbar-color: #00ff88;
+    scrollbar-corner-color: #0d1117;
+    overflow-y: auto;
+    overflow-x: hidden;
+}

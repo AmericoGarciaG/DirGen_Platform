@@ -1,0 +1,88 @@
+# PCCE: DirGen Bootstrap para FinBase v1.0
+rol: "Plataforma DirGen: Orquestador de agentes para generar el sistema FinBase."
+
+contexto:
+  nombre_proyecto: "FinBase Data Pipeline"
+  descripcion: "Sistema de ingesta y procesamiento de datos de mercado financiero en tiempo real."
+  objetivo: "Construir un sistema de microservicios EDA desde cero, aplicando Gobernanza como Código."
+  entorno_despliegue_local: "Docker Compose"
+
+entradas:
+  requerimientos_funcionales:
+    - "FR-01: Recolectar datos de mercado (OHLCV) de Yahoo Finance para tickers predefinidos."
+    - "FR-02: Validar que los campos numéricos sean positivos y el timestamp sea válido."
+    - "FR-03: Enrutar datos válidos a un flujo 'limpio' e inválidos a un flujo de 'error'."
+    - "FR-04: Persistir datos limpios en una base de datos de series de tiempo (TimescaleDB)."
+    - "FR-05: Exponer API REST para consultar datos históricos por ticker."
+    - "FR-06: Exponer API segura para iniciar tareas de backfilling de datos históricos."
+      
+  requerimientos_no_funcionales:
+    - "NFR-01: Rendimiento. Latencia de API P99 < 200ms; Ingesta de 100 msg/s."
+    - "NFR-02: Escalabilidad. Todos los componentes deben ser escalables horizontalmente."
+    - "NFR-03: Resiliencia. Desacoplamiento mediante broker de mensajes; reintentos con exponential backoff."
+    - "NFR-04: Seguridad. API de backfill protegida con API Key; gestión de secretos vía variables entorno."
+    - "NFR-05: Calidad. Cobertura de pruebas > 80%; código formateado con Black y isort."
+    - "NFR-06: Observabilidad. Logs estructurados en formato JSON."
+
+  arquitectura_propuesta:
+    patron: "Arquitectura de Microservicios basada en Eventos (Event-Driven)"
+    componentes:
+      - "collector-yfinance"
+      - "quality-service"
+      - "storage-service"
+      - "api-service"
+      - "backfill-worker-service"
+    comunicacion_asincrona: "RabbitMQ"
+    persistencia: "PostgreSQL con TimescaleDB"
+
+  stack_tecnologico:
+    lenguaje: "Python 3.11+"
+    frameworks: ["FastAPI", "Pydantic", "SQLModel", "Pika"]
+    infraestructura_local: ["Docker", "Docker Compose"]
+
+salidas_esperadas:
+  - "Diagrama C4 de la arquitectura en formato PlantUML."
+  - "Contratos OpenAPI v3 para el 'api-service'."
+  - "Código fuente para los 5 microservicios."
+  - "Dockerfile para cada microservicio."
+  - "Archivo docker-compose.yml para orquestación local."
+  - "Reportes de pruebas unitarias, cobertura y SAST/SCA."
+  - "Dashboard de Grafana pre-configurado."
+
+fases:
+  diseno:
+    descripcion: "Generar los artefactos de diseño de alto nivel."
+    salidas_esperadas: # El Quality Gate usará esta lista para validar
+      - "design/architecture.puml"
+      - "design/api/collector.yml"
+      - "design/api/quality.yml"
+      - "design/api/storage.yml"
+      - "design/api/api.yml"
+      - "design/api/backfill.yml"
+
+perfiles_agentes:
+  - rol_agente: "planner"
+    descripcion: "Agente para diseño, planificación y tareas no-código."
+    modelo_id: "ai/gemma3-qat"
+    configuracion:
+      temperatura: 0.2
+      max_tokens: 10000
+
+  - rol_agente: "codegen"
+    descripcion: "Agente especializado en la generación de código fuente."
+    modelo_id: "ai/gemma3-qat"
+    configuracion:
+      temperatura: 0.0
+      max_tokens: 10000
+
+politicas_de_gobernanza:
+  - "qual-test-coverage-80"
+  - "std-python-black-isort"
+  - "sec-no-hardcoded-secrets"
+  - "sec-no-known-critical-cves"
+
+trazabilidad:
+  requerido: true
+  campos: ["run_id", "agent_id", "prompt_version", "artifact_hash", "timestamp"]
+
+
