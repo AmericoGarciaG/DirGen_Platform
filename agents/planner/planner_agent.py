@@ -5,6 +5,7 @@ import os
 import re
 import sys
 import time
+from pathlib import Path
 
 import requests
 import yaml
@@ -282,6 +283,11 @@ Tu tarea es generar los artefactos de diseño para el proyecto FinBase según lo
 DEBES generar exactamente estos archivos:
 {chr(10).join([f"- {archivo}" for archivo in salidas_esperadas])}
 
+IMPORTANTE - Información específica de archivos:
+- design/api/backfill.yml: API para el servicio de backfilling de datos históricos (FR-06)
+- design/api/api.yml: API REST para consultar datos históricos (FR-05)
+- Todos los archivos .yml deben tener especificaciones OpenAPI completas, NO archivos vacíos
+
 Opera en un ciclo de Pensamiento/Acción:
 1. **Pensamiento:** Analiza el contexto, los requerimientos y decide qué archivo crear a continuación. Explica tu razonamiento.
 2. **Acción:** Usa la herramienta 'writeFile' para crear el archivo.
@@ -292,12 +298,43 @@ FORMATO OBLIGATORIO para la Acción:
 - NO agregues explicaciones, comentarios o texto adicional después del JSON
 
 Para los archivos .puml: Genera diagramas C4 válidos con PlantUML.
-Para los archivos .yml: Genera especificaciones OpenAPI 3.0 válidas y completas.
+Para los archivos .yml: Genera especificaciones OpenAPI 3.0 válidas y completas con endpoints reales.
 
 Cuando hayas creado TODOS los archivos requeridos, tu último pensamiento debe contener exactamente: "Conclusión: Todos los artefactos de diseño han sido generados."""
         
+        # Verificar qué archivos ya existen físicamente
+        archivos_existentes = set()
+        project_root = Path(args.pcce_path).parent.parent  # Volver al directorio raíz del proyecto
+        
+        for archivo in salidas_esperadas:
+            archivo_path = project_root / archivo
+            if archivo_path.exists():
+                archivos_existentes.add(archivo)
+                logger.info(f"Archivo ya existente detectado: {archivo}")
+        
+        archivos_faltantes = [archivo for archivo in salidas_esperadas if archivo not in archivos_existentes]
+        
         # Inicializar el historial con el contexto completo del proyecto y feedback si existe
-        history = f"""CONTEXTO DEL PROYECTO:
+        if args.feedback:
+            # En reintentos, enfocar SOLO en los archivos faltantes
+            history = f"""REINTENTO - CONTEXTO DEL PROYECTO:
+{yaml.dump(project_context, indent=2)}
+
+ARCHIVOS QUE FALTAN POR GENERAR:
+{chr(10).join([f"- {archivo}" for archivo in archivos_faltantes])}
+
+ARCHIVOS YA EXISTENTES (NO REGENERAR):
+{chr(10).join([f"- {archivo}" for archivo in archivos_existentes])}
+
+FEEDBACK DE REINTENTO: {args.feedback}
+
+Tu única tarea es generar EXCLUSIVAMENTE los archivos faltantes listados arriba. NO regeneres archivos existentes.
+
+HISTORIAL DE EJECUCIÓN:"""
+            report_progress(args.run_id, "info", {"message": f"Procesando reintento - faltan {len(archivos_faltantes)} archivos"})
+        else:
+            # Primer intento - generar todos
+            history = f"""CONTEXTO DEL PROYECTO:
 {yaml.dump(project_context, indent=2)}
 
 ARCHIVOS A GENERAR:
@@ -306,29 +343,36 @@ ARCHIVOS A GENERAR:
 OBJETIVO FINAL: {objetivo_final}
 
 HISTORIAL DE EJECUCIÓN:"""
-        
-        # Inyectar feedback si está presente (reintento)
-        if args.feedback:
-            history += f"\n\nFEEDBACK DE REINTENTO: En el intento anterior fallaste. El feedback fue: {args.feedback}\nTu tarea es analizar este error y continuar el trabajo para generar los archivos faltantes o corregir los existentes.\n"
-            report_progress(args.run_id, "info", {"message": f"Procesando feedback de reintento: {args.feedback[:100]}..."})
 
-        archivos_creados = set()
-        max_iterations = len(salidas_esperadas) + 5  # Buffer para reintentos
+        # Inicializar archivos creados con los ya existentes
+        archivos_creados = archivos_existentes.copy()
+        
+        # Calcular iteraciones basado en archivos faltantes
+        archivos_pendientes = len(archivos_faltantes) if args.feedback else len(salidas_esperadas)
+        max_iterations = max(archivos_pendientes + 2, 8)  # Mínimo 8, máximo necesarios + buffer
         iteration = 0
         
         # Contador de estrategias fallidas para detectar si la tarea es imposible
         repeated_failures = 0
         last_error_pattern = None
+        last_thoughts = []  # Para detectar bucles de pensamiento
+        
+        logger.info(f"Iniciando con {len(archivos_creados)} archivos existentes, {archivos_pendientes} pendientes, max {max_iterations} iteraciones")
 
-        logger.info(f"Iniciando ciclo ReAct para generar {len(salidas_esperadas)} archivos")
+        logger.info(f"Iniciando ciclo ReAct - pendientes: {archivos_pendientes}, existentes: {len(archivos_existentes)}")
         
         # Ciclo ReAct principal
         while iteration < max_iterations:
             iteration += 1
             
-            # Construir prompt para el LLM
-            archivos_faltantes = [archivo for archivo in salidas_esperadas if archivo not in archivos_creados]
-            status_prompt = f"\n\nESTADO ACTUAL:\n- Archivos creados: {list(archivos_creados)}\n- Archivos faltantes: {archivos_faltantes}\n"
+            # Construir prompt para el LLM - manteniendo información actualizada
+            archivos_faltantes_actuales = [archivo for archivo in salidas_esperadas if archivo not in archivos_creados]
+            
+            if args.feedback:
+                # En reintentos, ser muy explícito sobre qué falta
+                status_prompt = f"\n\nESTADO ACTUAL DEL REINTENTO:\n- SOLO DEBES CREAR: {archivos_faltantes_actuales}\n- Ya existen (NO tocar): {list(archivos_existentes)}\n- Creados en esta sesión: {list(archivos_creados - archivos_existentes)}\n"
+            else:
+                status_prompt = f"\n\nESTADO ACTUAL:\n- Archivos creados: {list(archivos_creados)}\n- Archivos faltantes: {archivos_faltantes_actuales}\n"
             
             user_prompt = f"""{history}{status_prompt}
 Genera tu próximo 'Pensamiento:' seguido de tu 'Acción:' para continuar con la tarea."""
@@ -367,6 +411,26 @@ Genera tu próximo 'Pensamiento:' seguido de tu 'Acción:' para continuar con la
             # Solo terminar si realmente se han creado TODOS los archivos requeridos
             archivos_faltantes_actuales = [archivo for archivo in salidas_esperadas if archivo not in archivos_creados]
             
+            # Detectar bucles de pensamiento (mismo pensamiento repetido)
+            last_thoughts.append(thought[:100])  # Primeros 100 caracteres
+            if len(last_thoughts) > 3:
+                last_thoughts.pop(0)
+            
+            # Si los últimos 3 pensamientos son muy similares, declarar imposible
+            if len(last_thoughts) == 3 and len(set(last_thoughts)) <= 1:
+                logger.warning("Bucle de pensamiento detectado - mismos pensamientos repetidos")
+                reason = f"Bucle infinito detectado: el agente repite el mismo razonamiento sin progresar"
+                try:
+                    response = requests.post(f"{HOST}/v1/agent/{args.run_id}/task_complete", 
+                                           json={"role": "planner", "status": "impossible", "reason": reason}, 
+                                           timeout=10)
+                    response.raise_for_status()
+                    logger.info("Notificación de bucle infinito enviada al Orquestador")
+                    return
+                except requests.RequestException as e:
+                    logger.error(f"Error enviando notificación de bucle infinito: {str(e)}")
+                    return
+            
             # Detectar si el agente está declarando la tarea como imposible
             if "IMPOSIBLE" in thought.upper() and ("no puedo" in thought.lower() or "imposible" in thought.lower()):
                 logger.warning("Agente declarando tarea como IMPOSIBLE")
@@ -382,14 +446,19 @@ Genera tu próximo 'Pensamiento:' seguido de tu 'Acción:' para continuar con la
                     logger.error(f"Error enviando notificación de tarea imposible: {str(e)}")
                     return
             
+            # Verificación de terminación mejorada
             if "Conclusión:" in thought and "todos los artefactos" in thought.lower():
                 if len(archivos_faltantes_actuales) == 0:
                     logger.info("Condición de terminación detectada - todos los archivos han sido creados")
                     break
                 else:
                     logger.warning(f"El LLM dice que terminó, pero faltan archivos: {archivos_faltantes_actuales}")
-                    # Agregar retroalimentación al historial para corregir al LLM
-                    history += f"\n\nIteración {iteration}:\nPensamiento: {thought}\nError: Dijiste que terminaste, pero AÚN FALTAN estos archivos por crear: {archivos_faltantes_actuales}. Debes continuar hasta crearlos TODOS."
+                    # En reintentos, ser más agresivo sobre la corrección
+                    if args.feedback:
+                        correction = f"ALERTA: Tu reintento falló. Debes crear EXACTAMENTE estos archivos: {archivos_faltantes_actuales}. NO digas que terminaste hasta que estén todos creados."
+                    else:
+                        correction = f"Error: Dijiste que terminaste, pero AÚN FALTAN estos archivos por crear: {archivos_faltantes_actuales}. Debes continuar hasta crearlos TODOS."
+                    history += f"\n\nIteración {iteration}:\nPensamiento: {thought}\n{correction}"
                     # Continuar el ciclo para completar los archivos faltantes
             
             if not action_match:
