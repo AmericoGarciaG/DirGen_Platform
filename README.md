@@ -8,7 +8,7 @@ DirGen transforma **PCCE** (Project Context, Components, and Expectations) o **S
 
 - **🤖 Agente Planificador**: Genera arquitectura, diseño y código con IA avanzada
 - **✅ Agente Validador**: Valida calidad y completitud con quality gates inteligentes
-- **📋 Agente de Requerimientos**: Analiza documentos SVAD y genera PCCEs (próximamente)
+- **📋 Agente de Requerimientos**: Analiza documentos SVAD y genera PCCEs automáticamente
 - **🎭 Agentes Especializados**: Implementan código específico por tecnología
 - **🎯 Orquestador**: Coordina todo el flujo de trabajo con streaming en tiempo real
 - **🖥️ Cliente TUI**: Interfaz de usuario terminal interactiva
@@ -29,7 +29,7 @@ DirGen Platform v2.0
 ├── 🤖 agents/                    # Agentes de IA especializados
 │   ├── planner/               # Planificación con IA avanzada + FailureMemory
 │   ├── validator/             # Validación de calidad con quality gates
-│   └── requirements/ (futuro) # Análisis de documentos SVAD
+│   └── requirements/          # ✨ NUEVO: Análisis de documentos SVAD
 ├── 📋 SVAD_FinBase_v1.md        # Documento de requerimientos de ejemplo
 ├── 📋 pcce_finbase.yml           # PCCE de ejemplo para FinBase
 ├── 📄 REFACTORIZATION_SUMMARY.md  # Documentación de la refactorización
@@ -43,7 +43,7 @@ DirGen Platform v2.0
 - **🧠 Servicios LLM Centralizados**: Múltiples proveedores con fallback automático
 - **📊 Optimización de Costos**: Consolidación de historial y cache inteligente
 - **🛑 FailureMemory**: Detección inteligente de tareas imposibles
-- **📋 Soporte SVAD**: Documentos de requerimientos en Markdown (próximamente)
+- **📋 Soporte SVAD**: Documentos de requerimientos en Markdown con validación automática
 - **🏗️ Arquitectura SOLID**: Responsabilidad única, bajo acoplamiento, alta cohesión
 
 ### Prerrequisitos
@@ -92,23 +92,38 @@ export DMR_BASE_URL="http://localhost:8080"     # Dynamic Model Router
 
 2. **Crear o seleccionar un PCCE/SVAD**:
 ```bash
-# PCCE de ejemplo incluido: pcce_finbase.yml
+# Opción 1: Iniciar desde SVAD (recomendado para proyectos nuevos)
 # SVAD de ejemplo incluido: SVAD_FinBase_v1.md
+# El sistema generará automáticamente el PCCE
+
+# Opción 2: Usar PCCE directamente (para casos avanzados)
+# PCCE de ejemplo incluido: pcce_finbase.yml
+
 # Personalizar según necesidades del proyecto
 ```
 
 ### Ejecución
 
-#### Opción 1: Interfaz TUI Interactiva
+#### Opción 1: Interfaz TUI Interactiva (Recomendado)
 ```bash
 cd client
 python tui.py
+# El TUI detectará automáticamente archivos SVAD y PCCE
+# Para SVAD: inicia con Fase 0 (Análisis de Requerimientos)
+# Para PCCE: inicia directamente con Fase 1 (Diseño)
 ```
 
-#### Opción 2: CLI Directo
+#### Opción 2: CLI con PCCE Directo
 ```bash
 cd client
 python cli.py execute ../pcce_finbase.yml
+```
+
+#### Opción 3: CLI con SVAD (Nuevo)
+```bash
+cd client
+# El sistema iniciará con Fase 0 para generar PCCE automáticamente
+python tui.py  # Seleccionar SVAD_FinBase_v1.md en la interfaz
 ```
 
 El sistema iniciará automáticamente el MCP Host y coordinará todos los agentes necesarios.
@@ -162,12 +177,14 @@ fases:
    - **Generación optimizada** de configuraciones de infraestructura
    - **Quality Gate 3** valida preparación para despliegue
 
-### 🔥 Flujo Futuro (SVAD → PCCE) - PRÓXIMAMENTE
-0. **📋 Fase de Análisis**: 
+### 🆕 Flujo Completo (SVAD → PCCE → Código) - ✨ IMPLEMENTADO
+0. **📋 Fase 0 - Análisis de Requerimientos**: 
    - **Cliente envía SVAD** (Documento de Requerimientos en Markdown)
-   - **Agente de Requerimientos** valida contra plantillas estándar
+   - **RequirementsAgent** valida estructura contra plantillas estándar
+   - **Sanitización automática** de salida LLM (YAML, Unicode, Markdown fences)
    - **Generación automática** del PCCE correspondiente
-1-4. **Flujo normal** continúa con el PCCE generado
+   - **Transición automática** a Fase 1 con el PCCE generado
+1-4. **Flujo normal** continúa con el PCCE generado automáticamente
 
 ## 🛍️ Componentes Principales
 
@@ -222,11 +239,14 @@ fases:
 - **Completitud:** Revisión de artefactos esperados
 - **Feedback inteligente:** Sugerencias de corrección con contexto
 
-#### Agente de Requerimientos (`agents/requirements/`) - 🔥 PRÓXIMAMENTE
-- **Análisis SVAD:** Validación de documentos de requerimientos en Markdown
-- **Generación PCCE:** Conversión automática SVAD → PCCE
-- **Validación:** Contra plantillas estándar de la compañía
-- **Trazabilidad:** Mapeo completo requerimientos → artefactos
+#### Agente de Requerimientos (`agents/requirements/`) - ✨ IMPLEMENTADO
+- **Análisis SVAD**: Validación robusta de documentos de requerimientos en Markdown
+- **Generación PCCE**: Conversión automática SVAD → PCCE usando LLM avanzado
+- **Sanitización YAML**: Limpieza automática de salida LLM (```yaml, Unicode, caracteres especiales)
+- **Validación**: Contra plantillas estándar con puntuación de calidad automática
+- **Manejo de errores**: Reporte detallado de problemas y sugerencias de corrección
+- **Integración**: Usa dirgen_core para múltiples proveedores LLM con fallback
+- **Trazabilidad**: Mapeo completo requerimientos → PCCE → artefactos
 
 ### 📋 Documentos de Ejemplo
 - **`SVAD_FinBase_v1.md`**: Documento completo de requerimientos (gold standard)
@@ -368,11 +388,13 @@ python tui.py
 
 ## 🎆 Próximas Funcionalidades
 
-- **📋 RequirementsAgent**: Análisis automático de documentos SVAD
+- **✅ RequirementsAgent**: ✨ COMPLETADO - Análisis automático de documentos SVAD
+- **🔍 Validación avanzada SVAD**: Integración con plantillas corporativas personalizables
 - **🌍 Despliegue en nube**: Soporte para AWS, Azure, GCP
-- **📈 Dashboard web**: Interfaz gráfica para monitoreo
-- **🤖 Agentes adicionales**: Testing, DevOps, Security
-- **🔄 Pipeline CI/CD**: Integración con GitHub Actions
+- **📈 Dashboard web**: Interfaz gráfica para monitoreo en tiempo real
+- **🤖 Agentes adicionales**: Testing, DevOps, Security, Documentation
+- **🔄 Pipeline CI/CD**: Integración con GitHub Actions y GitLab CI
+- **📊 Analytics**: Métricas de productividad y optimización de costos
 
 ---
 
