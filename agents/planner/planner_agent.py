@@ -66,9 +66,40 @@ def call_llm_service(system_prompt: str, user_prompt: str, task_type: str = "gen
         raise
 
 
-# === MEMORIA DE FALLOS ===
+# === MEMORIA DE FALLOS INTELIGENTE ===
 class FailureMemory:
-    """Sistema de memoria para rastrear fallos y detectar tareas imposibles"""
+    """
+    🛑 Sistema Inteligente de Memoria de Fallos - DirGen v2.0
+    
+    Esta clase implementa un sistema avanzado de memoria que rastrea patrones de fallos
+    recurrentes y detecta automáticamente cuando una tarea debe considerarse "imposible"
+    de completar, evitando bucles infinitos y optimizando el uso de recursos.
+    
+    🎯 Características:
+    - 📈 Detección de patrones de error repetitivos
+    - 🔄 Rastreo de estrategias intentadas por tipo de error
+    - 🚨 Escalada automática tras N estrategias fallidas
+    - 📊 Estadísticas detalladas para debugging
+    - 🧠 Aprendizaje de errores para mejorar resiliencia
+    
+    📈 Métricas:
+    - Total de fallos registrados
+    - Patrones de error únicos identificados  
+    - Estrategias intentadas por patrón
+    - Tasa de éxito/fallo por tipo de error
+    
+    🔧 Configuración:
+    - max_strategies_per_error: Máximo de estrategias antes de declarar imposible (default: 5)
+    
+    Example:
+        >>> memory = FailureMemory(max_strategies_per_error=3)
+        >>> is_impossible = memory.record_failure(
+        ...     "Connection timeout to API", 
+        ...     "Retry with exponential backoff"
+        ... )
+        >>> if is_impossible:
+        ...     print("Task declared impossible after multiple strategies")
+    """
     
     def __init__(self, max_strategies_per_error: int = 5):
         self.max_strategies = max_strategies_per_error
