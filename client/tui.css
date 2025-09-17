@@ -134,3 +134,38 @@ Log {
     padding: 1;
     margin: 1;
 }
+
+/* === PLAN WIDGET - COMPONENTE DE PLANIFICACIÓN === */
+.plan-widget {
+    background: #161b22;
+    color: #f0f6fc;
+    border: solid #30363d;
+    border-title-color: #58a6ff;
+    border-title-style: bold;
+    padding: 1;
+    margin: 0;
+    width: 35%;
+    min-width: 35;
+    max-width: 50%;
+    height: 100%;
+    scrollbar-background: #21262d;
+    scrollbar-color: #58a6ff;
+}
+
+/* === LAYOUT HORIZONTAL PRINCIPAL === */
+Horizontal {
+    height: 100%;
+}
+
+/* === LOG PRINCIPAL AJUSTADO === */
+.main-log {
+    background: #0d1117;
+    color: #f0f6fc;
+    border: solid #30363d;
+    padding: 1;
+    margin: 0;
+    width: 65%;
+    height: 100%;
+    scrollbar-background: #21262d;
+    scrollbar-color: #58a6ff;
+}

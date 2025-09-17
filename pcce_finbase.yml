@@ -61,19 +61,102 @@ fases:
       - "design/api/backfill.yml"
 
 perfiles_agentes:
+  # === AGENTES DE PLANIFICACIÓN Y DISEÑO ===
   - rol_agente: "planner"
-    descripcion: "Agente para diseño, planificación y tareas no-código."
+    descripcion: "Agente para planificación estratégica, diseño de arquitectura y generación de artefactos de diseño."
     modelo_id: "ai/gemma3-qat"
+    fallback_modelo: "ai/smollm3"
     configuracion:
       temperatura: 0.2
       max_tokens: 10000
-
+    tareas_especializadas:
+      - "planificacion_estrategica"
+      - "diseno_arquitectura"
+      - "generacion_diagramas_c4"
+      - "especificaciones_openapi"
+      - "documentacion_tecnica"
+  
+  - rol_agente: "validator"
+    descripcion: "Agente especializado en validación de calidad, Quality Gates y auditoría de artefactos."
+    modelo_id: "ai/smollm3"
+    fallback_modelo: "ai/gemma3-qat"
+    configuracion:
+      temperatura: 0.1
+      max_tokens: 8000
+    tareas_especializadas:
+      - "quality_gates"
+      - "validacion_artefactos"
+      - "auditoria_codigo"
+      - "verificacion_completitud"
+  
+  # === AGENTES DE GENERACIÓN DE CÓDIGO ===
   - rol_agente: "codegen"
-    descripcion: "Agente especializado en la generación de código fuente."
+    descripcion: "Agente especializado en generación de código fuente completo y complejo."
     modelo_id: "ai/gemma3-qat"
+    fallback_modelo: "ai/smollm3"
     configuracion:
       temperatura: 0.0
+      max_tokens: 12000
+    tareas_especializadas:
+      - "generacion_microservicios"
+      - "apis_rest_fastapi"
+      - "logica_negocio_compleja"
+      - "integraciones_bases_datos"
+  
+  - rol_agente: "codegen_simple"
+    descripcion: "Agente para generación de código simple, configuraciones y scripts."
+    modelo_id: "ai/smollm3"
+    fallback_modelo: "ai/gemma3-qat"
+    configuracion:
+      temperatura: 0.1
+      max_tokens: 8000
+    tareas_especializadas:
+      - "dockerfiles"
+      - "docker_compose"
+      - "scripts_configuracion"
+      - "archivos_requirements"
+  
+  # === AGENTES DE INFRAESTRUCTURA ===
+  - rol_agente: "devops"
+    descripcion: "Agente especializado en DevOps, CI/CD y configuración de infraestructura."
+    modelo_id: "ai/smollm3"
+    fallback_modelo: "ai/gemma3-qat"
+    configuracion:
+      temperatura: 0.1
       max_tokens: 10000
+    tareas_especializadas:
+      - "pipelines_cicd"
+      - "configuracion_docker"
+      - "orquestacion_servicios"
+      - "monitoreo_logging"
+  
+  # === AGENTES DE TESTING ===
+  - rol_agente: "tester"
+    descripcion: "Agente especializado en generación de pruebas unitarias, integración y calidad."
+    modelo_id: "ai/smollm3"
+    fallback_modelo: "ai/gemma3-qat"
+    configuracion:
+      temperatura: 0.2
+      max_tokens: 8000
+    tareas_especializadas:
+      - "pruebas_unitarias"
+      - "pruebas_integracion"
+      - "mocks_fixtures"
+      - "analisis_cobertura"
+  
+  # === AGENTES DE DOCUMENTACIÓN ===
+  - rol_agente: "documenter"
+    descripcion: "Agente especializado en documentación técnica, READMEs y guías de usuario."
+    modelo_id: "ai/smollm3"
+    fallback_modelo: "ai/gemma3-qat"
+    configuracion:
+      temperatura: 0.3
+      max_tokens: 10000
+    tareas_especializadas:
+      - "documentacion_api"
+      - "readme_proyectos"
+      - "guias_instalacion"
+      - "documentacion_arquitectura"
 
 politicas_de_gobernanza:
   - "qual-test-coverage-80"
@@ -85,4 +168,9 @@ trazabilidad:
   requerido: true
   campos: ["run_id", "agent_id", "prompt_version", "artifact_hash", "timestamp"]
 
-
+# ai/qwen3-coder para generación de código más compleja
+# ai/qwen3 para tareas generales y generación de código estándar
+# ai/gemma3-qat para tareas generales y generación de código estándar
+# ai/gemma3 tareas generales de bajo costo computacional
+# ai/gemma3n para tareas de bajo costo computacional
+# ai/smollm3 para tareas de bajo costo computacional generales y generación de código simple

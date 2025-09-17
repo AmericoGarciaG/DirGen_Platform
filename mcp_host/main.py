@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import uuid
+from datetime import datetime
 from pathlib import Path
 
 import uvicorn
@@ -260,8 +261,95 @@ async def tool_write_file(request: Request):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+# --- Endpoints de Gestión de Modelos Locales ---
+@app.get("/v1/models/status")
+async def get_models_status():
+    """Obtiene el estado de todos los modelos locales"""
+    try:
+        # Importar el gestor de modelos
+        sys.path.append(str(PROJECT_ROOT / "agents" / "planner"))
+        from local_model_manager import get_model_manager
+        
+        manager = get_model_manager()
+        stats = manager.get_model_stats()
+        
+        return {
+            "success": True,
+            "timestamp": datetime.now().isoformat(),
+            "stats": stats
+        }
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo estado de modelos: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
+
+@app.post("/v1/models/{model_id}/ensure")
+async def ensure_model_running(model_id: str):
+    """Asegura que un modelo específico esté ejecutándose"""
+    try:
+        sys.path.append(str(PROJECT_ROOT / "agents" / "planner"))
+        from local_model_manager import ensure_model_available
+        
+        success = ensure_model_available(model_id)
+        
+        return {
+            "success": success,
+            "model_id": model_id,
+            "message": f"Modelo {'disponible' if success else 'falló al iniciar'}",
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error asegurando modelo {model_id}: {e}")
+        return {
+            "success": False,
+            "model_id": model_id,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
+
+@app.post("/v1/models/cleanup")
+async def cleanup_idle_models():
+    """Fuerza limpieza de modelos inactivos"""
+    try:
+        sys.path.append(str(PROJECT_ROOT / "agents" / "planner"))
+        from local_model_manager import get_model_manager
+        
+        manager = get_model_manager()
+        # Forzar limpieza inmediata
+        manager._cleanup_idle_models()
+        
+        return {
+            "success": True,
+            "message": "Limpieza de modelos ejecutada",
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error en limpieza de modelos: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
+
 @app.post("/v1/agent/{run_id}/report")
 async def report_agent_progress(run_id: str, request: Request):
     progress_data = await request.json()
-    await manager.broadcast(run_id, progress_data)
+    
+    # Retransmitir todos los mensajes, incluidos los de planificación
+    message_type = progress_data.get("type")
+    
+    if message_type in ["plan_generated", "plan_updated"]:
+        # Mensajes de planificación: retransmitir directamente al TUI
+        logger.info(f"Retransmitiendo mensaje de planificación: {message_type}")
+        await manager.broadcast(run_id, progress_data)
+    else:
+        # Otros mensajes: retransmisión normal
+        await manager.broadcast(run_id, progress_data)
+    
     return {"status": "reported"}

@@ -4,7 +4,9 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Static, Log
+from textual.widgets import Header, Footer, Static, Log, ListItem, ListView
+from textual.containers import Horizontal, Vertical
+from textual.reactive import reactive
 import websockets
 import requests
 
@@ -57,6 +59,59 @@ def format_content(content: str, max_width: int = 120) -> str:
     return content
 
 # --- Componentes de la UI Profesional ---
+class PlanWidget(Static):
+    """Widget especializado para mostrar y actualizar el plan estratégico del agente"""
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.current_plan = []
+        self.total_tasks = 0
+        self.plan_status = "Sin plan"
+        
+    def update_plan(self, plan_data: dict):
+        """Actualiza el contenido del plan"""
+        self.current_plan = plan_data.get("plan", [])
+        self.total_tasks = plan_data.get("total_tasks", len(self.current_plan))
+        reason = plan_data.get("reason", "")
+        
+        # Determinar si es actualización o plan inicial
+        if reason:
+            self.plan_status = f"Plan actualizado ({reason})"
+        else:
+            self.plan_status = "Plan estratégico inicial"
+            
+        self._refresh_display()
+    
+    def _refresh_display(self):
+        """Actualiza la visualización del plan"""
+        if not self.current_plan:
+            content = "📋 **PLAN ESTRATÉGICO**\n\n⚠️  Sin plan generado aún"
+        else:
+            header = f"📋 **PLAN ESTRATÉGICO** ({len(self.current_plan)} tareas)\n"
+            header += f"Estado: {self.plan_status}\n"
+            header += "─" * 50 + "\n"
+            
+            # Formatear cada tarea del plan
+            task_lines = []
+            for i, task in enumerate(self.current_plan, 1):
+                # Estado por defecto: pendiente
+                status_icon = "⚪"  # ◯ para círculo vacío, ⚪ para círculo medio
+                task_lines.append(f"{status_icon} **{i}.** {task}")
+            
+            content = header + "\n".join(task_lines)
+            
+            # Añadir footer
+            content += "\n" + "─" * 50
+            content += f"\n📊 Total: {len(self.current_plan)} tareas | 🔄 Adaptable según obstáculos"
+            
+        self.update(content)
+    
+    def mark_task_progress(self, task_index: int, status: str = "in_progress"):
+        """Marca el progreso de una tarea específica (funcionalidad futura)"""
+        # Esta funcionalidad se puede implementar más adelante cuando el agente
+        # reporte progreso granular por tarea
+        pass
+
 def create_message_widget(message_data: dict) -> Static:
     """Crea un widget de mensaje con estilo profesional"""
     source = message_data.get("source", "System")
@@ -155,10 +210,15 @@ class DirGenTUI(App):
         self.retry_count = 0
     
     def compose(self) -> ComposeResult:
-        """Layout limpio y funcional: Header dinámico + Log principal + Footer"""
+        """Layout optimizado: Header + Status + Plan + Log en disposición horizontal"""
         yield Header()
         yield Static(self._get_status_text(), id="status-bar", classes="status-bar")
-        yield Log(id="main-log", auto_scroll=True, highlight=True)
+        
+        # Layout horizontal: Plan a la izquierda, Log a la derecha
+        with Horizontal():
+            yield PlanWidget(id="plan-widget", classes="plan-widget")
+            yield Log(id="main-log", auto_scroll=True, highlight=True, classes="main-log")
+        
         yield Footer()
     
     def _get_status_text(self) -> str:
@@ -351,6 +411,23 @@ class DirGenTUI(App):
             data = message_data.get("data", {})
             source = message_data.get("source", "System")
             
+            # === MANEJO DE MENSAJES DE PLANIFICACIÓN ===
+            if msg_type == "plan_generated":
+                # Plan inicial generado
+                await self._update_plan_widget(data)
+                self.update_status(status="Plan generado")
+                self.log_message(f"📋 Plan estratégico generado con {data.get('total_tasks', '?')} tareas", "info")
+                return  # No mostrar en log principal
+                
+            elif msg_type == "plan_updated":
+                # Plan actualizado por re-planificación
+                await self._update_plan_widget(data)
+                reason = data.get("reason", "Motivo no especificado")
+                self.update_status(status="Plan actualizado")
+                self.log_message(f"🔄 Plan actualizado: {reason}", "warning")
+                return  # No mostrar en log principal
+            
+            # === MANEJO DE OTROS MENSAJES ===
             # Actualizar barra de estado dinámica
             if msg_type == "phase_start":
                 phase_name = data.get("name", "Desconocida")
@@ -384,6 +461,20 @@ class DirGenTUI(App):
             logger.error(error_msg)
             logger.error(f"Mensaje original: {message_data}")
             self._write_to_tui(f"⚠️  {error_msg}")
+    
+    async def _update_plan_widget(self, plan_data: dict):
+        """Actualiza el PlanWidget con nuevos datos del plan"""
+        try:
+            plan_widget = self.query_one("#plan-widget", PlanWidget)
+            plan_widget.update_plan(plan_data)
+            logger.info(f"PlanWidget actualizado con {len(plan_data.get('plan', []))} tareas")
+        except Exception as e:
+            logger.error(f"Error actualizando PlanWidget: {e}")
+            # Fallback: mostrar en log principal
+            plan_tasks = plan_data.get("plan", [])
+            if plan_tasks:
+                plan_text = "\n".join([f"- {task}" for task in plan_tasks])
+                self.log_message(f"📋 PLAN ESTRATÉGICO:\n{plan_text}", "info")
     
     def _format_websocket_message(self, message_data: dict) -> str:
         """Formatea un mensaje WebSocket para mostrar en la TUI"""
