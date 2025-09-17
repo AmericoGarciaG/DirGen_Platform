@@ -42,3 +42,6 @@ docs/INSTRUCCIONES_ROTACION_CLAVES.md
 docs/LLM_OPTIMIZATIONS.md
 docs/optimizaciones_sistema_dirgen.md
 .env.api_keys
+docs/PROJECT_CLEANUP_AND_TESTING.md
+docs/REFACTORIZATION_SUMMARY.md
+agents/planner/planner_agent_backup.py
