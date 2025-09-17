@@ -327,29 +327,34 @@ class DirGenTUI(App):
                     self.update_status(status="Error de conexión")
     
     async def _start_execution(self):
-        """Inicia una nueva ejecución enviando el PCCE"""
+        """Inicia una nueva ejecución enviando el documento SVAD"""
         try:
-            self.log_message("📤 Enviando PCCE para iniciar ejecución...", "info")
+            self.log_message("📋 Enviando documento SVAD para análisis de requerimientos...", "info")
             
-            with open("pcce_finbase.yml", 'rb') as f:
-                files = {'pcce_file': ("pcce_finbase.yml", f, 'application/x-yaml')}
-                response = requests.post("http://127.0.0.1:8000/v1/start_run", files=files, timeout=10)
+            # Buscar el archivo SVAD
+            svad_file_path = "SVAD_FinBase_v1.md"
+            
+            with open(svad_file_path, 'rb') as f:
+                files = {'svad_file': ("SVAD_FinBase_v1.md", f, 'text/markdown')}
+                response = requests.post("http://127.0.0.1:8000/v1/initiate_from_svad", files=files, timeout=10)
                 response.raise_for_status()
                 
             run_data = response.json()
             self.run_id = run_data.get("run_id")
             
-            self.log_message(f"✅ Ejecución iniciada: {self.run_id}", "info")
-            self.update_status(run_id=self.run_id, status="Conectado")
+            self.log_message(f"✅ Fase 0 iniciada: {self.run_id}", "info")
+            self.log_message("📋 Iniciando análisis de requerimientos con RequirementsAgent...", "info")
+            self.update_status(run_id=self.run_id, phase="Análisis de Requerimientos", status="Conectado")
             
             # Iniciar escucha WebSocket
             asyncio.create_task(self.listen_to_websocket(self.run_id))
             
         except FileNotFoundError:
-            self.log_message("❌ Archivo pcce_finbase.yml no encontrado", "error")
-            self.update_status(status="Error: PCCE faltante")
+            self.log_message("❌ Archivo SVAD_FinBase_v1.md no encontrado", "error")
+            self.log_message("Asegúrate de que el documento SVAD esté en el directorio raíz", "error")
+            self.update_status(status="Error: SVAD faltante")
         except requests.RequestException as e:
-            self.log_message(f"❌ Error iniciando ejecución: {str(e)}", "error")
+            self.log_message(f"❌ Error iniciando análisis: {str(e)}", "error")
             self.update_status(status="Error de inicio")
 
     async def listen_to_websocket(self, run_id: str):

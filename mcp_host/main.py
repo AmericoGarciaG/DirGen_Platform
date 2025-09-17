@@ -74,16 +74,57 @@ async def run_quality_gate_1(run_id: str, pcce_content: bytes):
     ACTIVE_PROCESSES[f"{run_id}_validator"] = process
     await manager.broadcast(run_id, {"source": "Orchestrator", "type": "info", "data": {"message": f"Agente Validador invocado (PID: {process.pid})..."}})
 
+# --- Lógica de Fase 0: Análisis de Requerimientos ---
+async def run_phase_0_requirements(run_id: str, svad_content: bytes):
+    """Ejecuta la Fase 0: Análisis de Requerimientos"""
+    await manager.broadcast(run_id, {
+        "source": "Orchestrator", 
+        "type": "phase_start", 
+        "data": {"name": "Análisis de Requerimientos"}
+    })
+    
+    # Guardar el archivo SVAD en un directorio temporal
+    temp_dir = tempfile.gettempdir()
+    temp_svad_path = os.path.join(temp_dir, f"{run_id}_svad.md")
+    with open(temp_svad_path, "wb") as f:
+        f.write(svad_content)
+    
+    # Invocar el RequirementsAgent
+    agent_script_path = PROJECT_ROOT / "agents" / "requirements" / "requirements_agent.py"
+    agent_command = [sys.executable, str(agent_script_path), "--run-id", run_id, "--svad-path", temp_svad_path]
+    
+    process = subprocess.Popen(agent_command)
+    ACTIVE_PROCESSES[f"{run_id}_requirements"] = process
+    await manager.broadcast(run_id, {
+        "source": "Orchestrator", 
+        "type": "info", 
+        "data": {"message": f"RequirementsAgent invocado (PID: {process.pid})..."}
+    })
+
 # --- Endpoints ---
+@app.post("/v1/initiate_from_svad")
+async def initiate_from_svad(svad_file: UploadFile = File(...)):
+    """Inicia la plataforma DirGen desde un documento SVAD - Fase 0"""
+    run_id = f"run-{uuid.uuid4()}"
+    svad_content = await svad_file.read()
+    
+    logger.info(f"Iniciando Fase 0 (Análisis de Requerimientos) para {run_id}")
+    
+    # Iniciar Fase 0 asíncronamente
+    asyncio.create_task(run_phase_0_requirements(run_id, svad_content))
+    
+    return {"message": "Fase 0: Análisis de Requerimientos iniciada.", "run_id": run_id}
+
 @app.post("/v1/start_run")
 async def start_run(pcce_file: UploadFile = File(...)):
+    """Legacy endpoint: Inicia directamente desde PCCE - Fase 1"""
     run_id = f"run-{uuid.uuid4()}"
     pcce_content = await pcce_file.read()
     
     # Iniciar Fase 1 asíncronamente para no bloquear la respuesta HTTP
     asyncio.create_task(run_phase_1_design(run_id, pcce_content))
     
-    return {"message": "Ejecución DirGen iniciada.", "run_id": run_id}
+    return {"message": "Ejecución DirGen iniciada (modo legacy).", "run_id": run_id}
 
 @app.post("/v1/agent/{run_id}/task_complete")
 async def agent_task_complete(run_id: str, request: Request):
@@ -92,7 +133,74 @@ async def agent_task_complete(run_id: str, request: Request):
     task_status = data.get("status", "success")
     summary = data.get("summary")  # Nuevo campo para el resumen ejecutivo
     
-    if agent_role == "planner":
+    # --- FASE 0: REQUIREMENTS AGENT ---
+    if agent_role == "requirements":
+        if task_status == "failed":
+            # Validación del SVAD falló
+            reason = data.get("reason", "Validación del documento SVAD falló")
+            logger.warning(f"RequirementsAgent validation failed for {run_id}: {reason}")
+            
+            await manager.broadcast(run_id, {
+                "source": "Orchestrator", 
+                "type": "phase_end", 
+                "data": {
+                    "name": "Análisis de Requerimientos", 
+                    "status": "RECHAZADO", 
+                    "reason": f"SVAD inválido: {reason}"
+                }
+            })
+        else:
+            # Fase 0 completada exitosamente - iniciar Fase 1
+            logger.info(f"RequirementsAgent completed successfully for {run_id}. Starting Phase 1.")
+            
+            if summary:
+                await manager.broadcast(run_id, {
+                    "source": "Orchestrator", 
+                    "type": "executive_summary", 
+                    "data": {
+                        "summary": summary,
+                        "agent_role": "requirements"
+                    }
+                })
+            
+            await manager.broadcast(run_id, {
+                "source": "Orchestrator", 
+                "type": "phase_end", 
+                "data": {
+                    "name": "Análisis de Requerimientos", 
+                    "status": "APROBADO", 
+                    "reason": "SVAD validado y PCCE generado exitosamente"
+                }
+            })
+            
+            await manager.broadcast(run_id, {
+                "source": "Orchestrator", 
+                "type": "info", 
+                "data": {"message": "Iniciando Fase 1: Diseño con el PCCE generado..."}
+            })
+            
+            # Leer el PCCE generado y iniciar Fase 1
+            temp_dir = tempfile.gettempdir()
+            temp_pcce_path = os.path.join(temp_dir, f"{run_id}_pcce.yml")
+            
+            if os.path.exists(temp_pcce_path):
+                with open(temp_pcce_path, "rb") as f:
+                    pcce_content = f.read()
+                asyncio.create_task(run_phase_1_design(run_id, pcce_content))
+            else:
+                logger.error(f"PCCE generado no encontrado para {run_id}")
+                await manager.broadcast(run_id, {
+                    "source": "Orchestrator", 
+                    "type": "phase_end", 
+                    "data": {
+                        "name": "Análisis de Requerimientos", 
+                        "status": "RECHAZADO", 
+                        "reason": "PCCE generado no encontrado"
+                    }
+                })
+    
+    # --- FASE 1: PLANNER AGENT ---
+    elif agent_role == "planner":
         if task_status == "impossible":
             # El agente declaró la tarea como imposible
             reason = data.get("reason", "El agente determinó que la tarea no es posible de completar")
