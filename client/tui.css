@@ -18,6 +18,21 @@ Header {
     margin: 0;
 }
 
+/* Ocultar paleta del header (solo dejar la del footer) */
+Header .header--palette {
+    display: none;
+}
+
+Header .-palette {
+    display: none;
+}
+
+/* Ocultar todos los elementos de paleta en el header */
+Header Button.-palette,
+Header Static.-palette {
+    display: none;
+}
+
 /* === FOOTER MINIMALISTA === */
 Footer {
     background: #161b22;
@@ -168,4 +183,213 @@ Horizontal {
     height: 100%;
     scrollbar-background: #21262d;
     scrollbar-color: #58a6ff;
+}
+
+/* === ESTILOS PARA HOMESCREEN === */
+.welcome-text {
+    background: #161b22;
+    color: #f0f6fc;
+    border: solid #30363d;
+    border-title-color: #58a6ff;
+    border-title-style: bold;
+    padding: 1;
+    margin: 0 0 1 0;
+    height: auto;
+    min-height: 6;
+}
+
+/* === LISTA DE PROYECTOS === */
+.projects-list {
+    background: #0d1117;
+    color: #f0f6fc;
+    border: solid #30363d;
+    border-title-color: #3fb950;
+    border-title-style: bold;
+    padding: 1;
+    margin: 0;
+    height: auto;
+    min-height: 10;
+    scrollbar-background: #21262d;
+    scrollbar-color: #3fb950;
+}
+
+/* === ITEMS DE PROYECTO ===
+.project-item {
+    background: #161b22;
+    color: #f0f6fc;
+    border: solid transparent;
+    padding: 1;
+    margin: 0 0 1 0;
+    height: auto;
+    min-height: 3;
+}
+
+.project-item:focus {
+    background: #21262d;
+    border: solid #58a6ff;
+}
+
+.no-projects-item {
+    background: #21262d;
+    color: #8b949e;
+    border: dashed #30363d;
+    padding: 1;
+    margin: 0;
+    text-style: italic;
+    height: auto;
+    min-height: 3;
+}
+
+/* === BOTONES DE ACCIÓN === */
+.action-buttons {
+    height: auto;
+    min-height: 3;
+    margin: 1 0;
+    padding: 0;
+}
+
+Button {
+    background: #21262d;
+    color: #f0f6fc;
+    border: solid #30363d;
+    margin: 0 1 0 0;
+    padding: 0 2;
+    min-width: 20;
+    height: 3;
+}
+
+Button:hover {
+    background: #30363d;
+    border: solid #58a6ff;
+}
+
+Button:focus {
+    background: #58a6ff;
+    color: #0d1117;
+    border: solid #f0f6fc;
+}
+
+Button.-primary {
+    background: #3fb950;
+    color: #0d1117;
+    border: solid #3fb950;
+    text-style: bold;
+}
+
+Button.-primary:hover {
+    background: #4ac259;
+    border: solid #4ac259;
+}
+
+Button.-primary:focus {
+    background: #56d364;
+    border: solid #f0f6fc;
+}
+
+/* === BARRA DE ESTADO HOME === */
+.home-status {
+    background: #161b22;
+    color: #f0f6fc;
+    border-top: solid #30363d;
+    height: 1;
+    padding: 0 1;
+    margin: 0;
+}
+
+/* === ESTADO DE CARGA/ERROR === */
+.loading-status {
+    color: #d29922;
+    text-style: bold;
+}
+
+.error-status {
+    color: #f85149;
+    text-style: bold;
+}
+
+.success-status {
+    color: #3fb950;
+    text-style: bold;
+}
+
+/* === AJUSTES PARA LOG SCREEN === */
+#log-status-bar {
+    background: #161b22;
+    color: #f0f6fc;
+    border-bottom: solid #30363d;
+    height: 1;
+    padding: 0 1;
+    margin: 0;
+}
+
+
+
+/* === RESPONSIVE ADJUSTMENTS ===
+ListView {
+    background: #0d1117;
+    color: #f0f6fc;
+    border: none;
+    scrollbar-background: #21262d;
+    scrollbar-color: #58a6ff;
+    height: auto;
+    padding: 0;
+}
+
+ListItem {
+    background: transparent;
+    color: #f0f6fc;
+    padding: 1;
+    margin: 0;
+    height: auto;
+    min-height: 3;
+    border: solid transparent;
+}
+
+ListItem:focus {
+    background: #21262d;
+    border: solid #58a6ff;
+}
+
+ListItem > Static {
+    background: transparent;
+    color: #f0f6fc;
+    padding: 0;
+    margin: 0;
+}
+
+/* === ESTILOS PARA FILESELECTIONSCREEN === */
+.directory-tree {
+    background: #0d1117;
+    color: #f0f6fc;
+    border: solid #30363d;
+    border-title-color: #58a6ff;
+    border-title-style: bold;
+    padding: 1;
+    margin: 0;
+    height: auto;
+    min-height: 15;
+    scrollbar-background: #21262d;
+    scrollbar-color: #58a6ff;
+}
+
+DirectoryTree {
+    background: #0d1117;
+    color: #f0f6fc;
+    border: solid #30363d;
+    scrollbar-background: #21262d;
+    scrollbar-color: #58a6ff;
+    padding: 1;
+}
+
+DirectoryTree:focus {
+    border: solid #58a6ff;
+}
+
+/* Nodos del DirectoryTree - Simplificado para Textual */
+DirectoryTree {
+    color: #f0f6fc;
+}
+
+DirectoryTree:focus {
+    color: #58a6ff;
 }
