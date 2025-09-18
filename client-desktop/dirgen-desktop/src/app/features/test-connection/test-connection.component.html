@@ -1,0 +1,199 @@
+<div class="test-connection-container">
+  <!-- Header -->
+  <mat-card class="header-card">
+    <mat-card-header>
+      <mat-card-title>🧪 Prueba de Conexión DirGen</mat-card-title>
+      <mat-card-subtitle>
+        Valida la comunicación completa Frontend ↔ Backend
+      </mat-card-subtitle>
+    </mat-card-header>
+    
+    <mat-card-content>
+      <p class="description">
+        Esta prueba verifica que el ciclo completo de comunicación funciona correctamente:
+        <strong>HTTP POST</strong> → <strong>WebSocket Stream</strong> → <strong>Mensajes en tiempo real</strong>
+      </p>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Control Panel -->
+  <mat-card class="control-panel">
+    <mat-card-header>
+      <mat-card-title>🎛️ Panel de Control</mat-card-title>
+    </mat-card-header>
+    
+    <mat-card-content>
+      <!-- File Selection -->
+      <div class="file-selection">
+        <h3>1. Seleccionar Archivo SVAD</h3>
+        <input 
+          type="file" 
+          (change)="onFileSelected($event)"
+          accept=".md,.txt"
+          #fileInput>
+        
+        @if (selectedFile) {
+          <div class="selected-file">
+            <mat-icon>description</mat-icon>
+            <span>{{ selectedFile.name }}</span>
+            <small>({{ (selectedFile.size / 1024).toFixed(1) }} KB)</small>
+          </div>
+        }
+      </div>
+      
+      <mat-divider></mat-divider>
+      
+      <!-- Actions -->
+      <div class="actions">
+        <h3>2. Iniciar Prueba</h3>
+        <div class="button-group">
+          <button 
+            mat-raised-button 
+            color="primary"
+            (click)="startConnectionTest()"
+            [disabled]="!selectedFile || isLoading">
+            @if (isLoading) {
+              <mat-icon>hourglass_empty</mat-icon>
+            } @else {
+              <mat-icon>play_arrow</mat-icon>
+            }
+            Iniciar Prueba de Conexión
+          </button>
+          
+          <button 
+            mat-stroked-button 
+            color="warn"
+            (click)="stopConnectionTest()"
+            [disabled]="!isLoading">
+            <mat-icon>stop</mat-icon>
+            Detener
+          </button>
+          
+          <button 
+            mat-stroked-button
+            (click)="clearMessages()">
+            <mat-icon>clear_all</mat-icon>
+            Limpiar Mensajes
+          </button>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Status Panel -->
+  <mat-card class="status-panel">
+    <mat-card-header>
+      <mat-card-title>📊 Estado de la Conexión</mat-card-title>
+    </mat-card-header>
+    
+    <mat-card-content>
+      <div class="status-info">
+        <!-- Loading Spinner -->
+        @if (isLoading) {
+          <div class="loading-indicator">
+            <mat-spinner diameter="40"></mat-spinner>
+            <span>Procesando...</span>
+          </div>
+        }
+        
+        <!-- Run ID -->
+        @if (runId) {
+          <div class="info-item">
+            <strong>Run ID:</strong> 
+            <code>{{ runId }}</code>
+          </div>
+        }
+        
+        <!-- WebSocket Status -->
+        <div class="info-item">
+          <strong>Estado WebSocket:</strong>
+          <mat-chip 
+            [color]="getConnectionStatusColor(webSocketState.status)"
+            selected>
+            <mat-icon>{{ getConnectionStatusIcon(webSocketState.status) }}</mat-icon>
+            {{ getConnectionStatusText(webSocketState.status) }}
+          </mat-chip>
+        </div>
+        
+        <!-- Message Count -->
+        <div class="info-item">
+          <strong>Mensajes Recibidos:</strong> {{ rawMessages.length }}
+        </div>
+        
+        <!-- Error Display -->
+        @if (error) {
+          <div class="error-message">
+            <mat-icon color="warn">error</mat-icon>
+            <span>{{ error }}</span>
+          </div>
+        }
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Messages Panel -->
+  <mat-card class="messages-panel">
+    <mat-card-header>
+      <mat-card-title>📨 Stream de Mensajes (Raw)</mat-card-title>
+      <mat-card-subtitle>
+        Mensajes crudos del backend en tiempo real
+      </mat-card-subtitle>
+    </mat-card-header>
+    
+    <mat-card-content>
+      @if (rawMessages.length === 0) {
+        <div class="empty-messages">
+          <mat-icon>inbox</mat-icon>
+          <p>No hay mensajes aún. Inicia una prueba de conexión para ver el stream de eventos.</p>
+        </div>
+      } @else {
+        <div class="messages-container">
+          @for (message of rawMessages; track message.timestamp) {
+            <div class="message-item">
+              <div class="message-header">
+                <mat-chip 
+                  size="small"
+                  [style.background-color]="getMessageTypeColor(message.type)"
+                  [style.color]="'white'">
+                  {{ message.type.toUpperCase() }}
+                </mat-chip>
+                <small class="timestamp">{{ formatTimestamp(message.timestamp) }}</small>
+              </div>
+              
+              <div class="message-content">
+                <pre>{{ message | json }}</pre>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Instructions -->
+  <mat-card class="instructions">
+    <mat-card-header>
+      <mat-card-title>📋 Instrucciones</mat-card-title>
+    </mat-card-header>
+    
+    <mat-card-content>
+      <ol>
+        <li>Selecciona el archivo <code>SVAD_FinBase_v1.md</code> (o cualquier archivo de texto)</li>
+        <li>Haz clic en "Iniciar Prueba de Conexión"</li>
+        <li>Observa que el Run ID se genere correctamente</li>
+        <li>Verifica que el estado del WebSocket cambie a "Conectado"</li>
+        <li>Los mensajes del backend aparecerán en tiempo real abajo</li>
+      </ol>
+      
+      <div class="success-criteria">
+        <h4>✅ Criterios de Éxito:</h4>
+        <ul>
+          <li>Se obtiene un Run ID válido del backend</li>
+          <li>La conexión WebSocket se establece correctamente</li>
+          <li>Se reciben y muestran mensajes del stream en tiempo real</li>
+          <li>Los mensajes se muestran en formato JSON crudo</li>
+        </ul>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

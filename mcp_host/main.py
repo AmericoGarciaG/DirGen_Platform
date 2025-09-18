@@ -12,12 +12,23 @@ from pathlib import Path
 import uvicorn
 import yaml
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from websockets.exceptions import ConnectionClosed
 
 # --- Configuración y Estado ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("ORCHESTRATOR")
 app = FastAPI(title="DirGen Orchestrator")
+
+# Configurar CORS para permitir peticiones desde Tauri
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # En producción, especificar orígenes específicos
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 ACTIVE_PROCESSES = {}
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -102,6 +113,11 @@ async def run_phase_0_requirements(run_id: str, svad_content: bytes):
     })
 
 # --- Endpoints ---
+@app.get("/health")
+async def health_check():
+    """Endpoint de salud para verificar que el servidor está funcionando"""
+    return {"status": "healthy", "message": "DirGen Orchestrator is running"}
+
 @app.post("/v1/initiate_from_svad")
 async def initiate_from_svad(svad_file: UploadFile = File(...)):
     """Inicia la plataforma DirGen desde un documento SVAD - Fase 0"""
