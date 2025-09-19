@@ -3,16 +3,11 @@ import { Routes } from '@angular/router';
 export const routes: Routes = [
   {
     path: '',
-    loadComponent: () => import('./features/monitoring/monitoring-web-advanced.component')
-      .then(m => m.MonitoringWebAdvancedComponent)
-  },
-  {
-    path: 'monitoring-web-advanced',
-    loadComponent: () => import('./features/monitoring/monitoring-web-advanced.component')
-      .then(m => m.MonitoringWebAdvancedComponent)
+    redirectTo: '/monitoring-web-advanced',
+    pathMatch: 'full'
   },
   
-  // Ruta para versión web avanzada (con StatusBar y Footer completos)
+  // Legacy routes for backward compatibility
   {
     path: 'monitoring-web-advanced',
     loadComponent: () => import('./features/monitoring/monitoring-web-advanced.component')
@@ -20,7 +15,6 @@ export const routes: Routes = [
     data: { title: 'DirGen Monitor Web - Interfaz Avanzada' }
   },
   
-  // Ruta para versión desktop (sin StatusBar problemático)
   {
     path: 'monitoring-desktop', 
     loadComponent: () => import('./features/monitoring/monitoring-no-statusbar.component')
@@ -28,7 +22,6 @@ export const routes: Routes = [
     data: { title: 'DirGen Monitor Desktop' }
   },
   
-  // Ruta para versión web básica (compatible)
   {
     path: 'monitoring',
     loadComponent: () => import('./features/monitoring/monitoring.component')
@@ -36,7 +29,6 @@ export const routes: Routes = [
     data: { title: 'DirGen Monitor - Interfaz Básica' }
   },
   
-  // Ruta para versión ultra simple (fallback)
   {
     path: 'monitoring-ultra-simple',
     loadComponent: () => import('./features/monitoring/monitoring-ultra-simple.component')
@@ -61,6 +53,6 @@ export const routes: Routes = [
   // Ruta de fallback
   {
     path: '**',
-    redirectTo: '/monitoring-ultra-simple'
+    redirectTo: ''
   }
 ];

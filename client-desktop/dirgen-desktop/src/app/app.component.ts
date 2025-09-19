@@ -1,13 +1,68 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
+import { Subscription } from 'rxjs';
+
+// Services
+import { ApiService } from './core/services/api.service';
+import { WebSocketState } from './shared/models/dirgen.models';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet],
+  imports: [CommonModule, RouterOutlet],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })
-export class AppComponent {
+export class AppComponent implements OnInit, OnDestroy {
   title = 'dirgen-desktop';
+  
+  // Estado global de la aplicación
+  webSocketState: WebSocketState = {
+    status: 'disconnected',
+    messages: []
+  };
+  
+  private subscriptions: Subscription[] = [];
+  
+  constructor(private apiService: ApiService) {}
+  
+  ngOnInit(): void {
+    // Escuchar el estado del WebSocket para toda la aplicación
+    const wsStateSubscription = this.apiService.webSocketState$.subscribe(state => {
+      this.webSocketState = state;
+    });
+    
+    this.subscriptions.push(wsStateSubscription);
+  }
+  
+  ngOnDestroy(): void {
+    this.subscriptions.forEach(sub => sub.unsubscribe());
+    this.apiService.disconnectWebSocket();
+  }
+  
+  /**
+   * Track function para ngFor
+   */
+  trackMessage(index: number, item: any): string {
+    return item.timestamp + index;
+  }
+  
+  /**
+   * Formatea timestamp para display
+   */
+  formatTime(timestamp: string | undefined): string {
+    if (!timestamp) return '--:--:--';
+    
+    try {
+      const date = new Date(timestamp);
+      return date.toLocaleTimeString('es-ES', { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit' 
+      });
+    } catch {
+      return timestamp.substring(0, 8);
+    }
+  }
 }

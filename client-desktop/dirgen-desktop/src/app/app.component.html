@@ -1,1 +1,78 @@
-<router-outlet></router-outlet>
+<!-- DirGen Conversational IDE -->
+<div class="dirgen-ide">
+  
+  <!-- SDLC Progress Bar -->
+  <div class="sdlc-progress-bar">
+    <div class="progress-stages">
+      <div class="stage active">
+        <div class="stage-icon">📋</div>
+        <div class="stage-label">Análisis de Req.</div>
+      </div>
+      <div class="stage-connector"></div>
+      <div class="stage">
+        <div class="stage-icon">🎯</div>
+        <div class="stage-label">Diseño</div>
+      </div>
+      <div class="stage-connector"></div>
+      <div class="stage">
+        <div class="stage-icon">💻</div>
+        <div class="stage-label">Código</div>
+      </div>
+      <div class="stage-connector"></div>
+      <div class="stage">
+        <div class="stage-icon">🧪</div>
+        <div class="stage-label">Pruebas</div>
+      </div>
+      <div class="stage-connector"></div>
+      <div class="stage">
+        <div class="stage-icon">🚀</div>
+        <div class="stage-label">Despliegue</div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Main Layout -->
+  <div class="main-layout">
+    
+    <!-- Left Panel - Plan & Deliverables -->
+    <div class="left-panel">
+      <!-- Aquí iría el PlanWidget, pero por simplicidad lo pondremos como contenido directo -->
+      <div class="plan-placeholder">
+        <h3>📁 Plan de Ejecución</h3>
+        <p>El plan aparecerá aquí una vez que el agente planificador termine su trabajo.</p>
+      </div>
+    </div>
+    
+    <!-- Right Panel - Events & Command Center -->
+    <div class="right-panel">
+      <div class="events-container">
+        <!-- Log de Eventos -->
+        <div class="events-wrapper">
+          <h3>📜 Log de Eventos</h3>
+          <div class="events-log">
+            <div *ngFor="let msg of webSocketState.messages; trackBy: trackMessage" class="event-item">
+              <span class="event-time">{{ formatTime(msg.timestamp) }}</span>
+              <span class="event-source">{{ msg.source || 'Sistema' }}</span>
+              <span class="event-message">{{ msg.message || msg.type }}</span>
+            </div>
+            <div *ngIf="webSocketState.messages.length === 0" class="no-events">
+              Esperando eventos...
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="command-center-container">
+        <!-- Centro de Mando -->
+        <div class="command-center-wrapper">
+          <h3>📡 Centro de Mando</h3>
+          <div class="command-prompt">
+            <input type="text" placeholder="Escribe un comando o arrastra archivos SVAD aquí..." class="command-input">
+            <button class="command-send">🚀</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+  
+</div>

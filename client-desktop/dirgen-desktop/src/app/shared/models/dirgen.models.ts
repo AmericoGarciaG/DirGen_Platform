@@ -12,6 +12,8 @@ export type DirgenMessageType =
   | 'plan'
   | 'plan_generated'
   | 'plan_updated'
+  | 'plan_approved'
+  | 'plan_rejected'
   | 'status'
   | 'error'
   | 'completion'
@@ -20,8 +22,11 @@ export type DirgenMessageType =
   | 'phase_start'
   | 'phase_end'
   | 'action'
+  | 'quality_gate_start'
   | 'quality_gate_result'
   | 'executive_summary'
+  | 'retry_attempt'
+  | 'info'
   | 'raw_message';
 
 // Tipos adicionales basados en mensajes reales del backend
@@ -139,11 +144,77 @@ export interface PlanGeneratedMessage extends BaseMessage {
   description?: string;
 }
 
+// Mensaje de plan aprobado
+export interface PlanApprovedMessage extends BaseMessage {
+  type: 'plan_approved';
+  data?: {
+    message: string;
+    user_response?: string;
+    timestamp?: string;
+  };
+}
+
+// Mensaje de plan rechazado
+export interface PlanRejectedMessage extends BaseMessage {
+  type: 'plan_rejected';
+  data?: {
+    message: string;
+    user_response?: string;
+    timestamp?: string;
+  };
+}
+
+// Mensaje de resumen ejecutivo
+export interface ExecutiveSummaryMessage extends BaseMessage {
+  type: 'executive_summary';
+  data: {
+    summary: string;
+    agent_role: string;
+  };
+}
+
+// Mensaje de reintento
+export interface RetryAttemptMessage extends BaseMessage {
+  type: 'retry_attempt';
+  data: {
+    attempt: number;
+    max_attempts: number;
+    feedback: string;
+  };
+}
+
+// Mensaje de inicio de quality gate
+export interface QualityGateStartMessage extends BaseMessage {
+  type: 'quality_gate_start';
+  data: {
+    name: string;
+  };
+}
+
+// Mensaje informativo
+export interface InfoMessage extends BaseMessage {
+  type: 'info';
+  data?: {
+    message: string;
+  };
+}
+
+// Mensaje de resultado de quality gate
+export interface QualityGateResultMessage extends BaseMessage {
+  type: 'quality_gate_result';
+  data?: {
+    success: boolean;
+    message?: string;
+  };
+}
+
 // Union type de todos los mensajes posibles
 export type DirgenMessage = 
   | ThoughtMessage 
   | PlanMessage 
   | PlanGeneratedMessage
+  | PlanApprovedMessage
+  | PlanRejectedMessage
   | StatusMessage 
   | ErrorMessage 
   | CompletionMessage 
@@ -152,6 +223,11 @@ export type DirgenMessage =
   | PhaseStartMessage
   | PhaseEndMessage
   | ActionMessage
+  | ExecutiveSummaryMessage
+  | RetryAttemptMessage
+  | QualityGateStartMessage
+  | QualityGateResultMessage
+  | InfoMessage
   | RawMessage;
 
 // Estados de conexión WebSocket

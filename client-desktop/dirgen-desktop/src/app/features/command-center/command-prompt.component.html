@@ -1,0 +1,164 @@
+<!-- Command Center - Centro de Mando -->
+<div class="command-center" 
+     [class.drag-over]="isDragOver"
+     (dragover)="onDragOver($event)"
+     (dragleave)="onDragLeave($event)"
+     (drop)="onDrop($event)">
+
+  <!-- Conversation History (Mini Chat) -->
+  <div class="conversation-mini" *ngIf="conversationHistory.length > 0">
+    <div class="conversation-messages">
+      <div *ngFor="let msg of conversationHistory.slice(-3)" 
+           class="message"
+           [class.user-message]="msg.sender === 'user'"
+           [class.orchestrator-message]="msg.sender === 'orchestrator'"
+           [class.approval-request]="msg.type === 'approval_request'">
+        
+        <div class="message-sender">
+          <mat-icon *ngIf="msg.sender === 'user'">person</mat-icon>
+          <mat-icon *ngIf="msg.sender === 'orchestrator'">smart_toy</mat-icon>
+          <mat-icon *ngIf="msg.sender === 'agent'">psychology</mat-icon>
+          <span class="sender-name">
+            {{ msg.sender === 'user' ? 'Tú' : 
+               msg.sender === 'orchestrator' ? 'Orquestador' : 
+               'Agente' }}
+          </span>
+        </div>
+        
+        <div class="message-content">
+          <p>{{ msg.content }}</p>
+          
+          <!-- Files attached -->
+          <div *ngIf="msg.files && msg.files.length > 0" class="attached-files-display">
+            <div *ngFor="let file of msg.files" class="attached-file-display">
+              <mat-icon>attach_file</mat-icon>
+              <span>{{ file.name }}</span>
+              <small>({{ formatFileSize(file.size) }})</small>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+    </div>
+  </div>
+
+  <!-- Input Area -->
+  <div class="prompt-area">
+    
+    <!-- Attached Files -->
+    <div *ngIf="attachedFiles.length > 0" class="attached-files">
+      <mat-chip-set>
+        <mat-chip *ngFor="let file of attachedFiles"
+                  [removable]="true"
+                  (removed)="removeAttachedFile(file.id)">
+          <mat-icon matChipAvatar>attach_file</mat-icon>
+          {{ file.name }}
+          <small class="file-size">({{ formatFileSize(file.size) }})</small>
+          <button matChipRemove>
+            <mat-icon>cancel</mat-icon>
+          </button>
+        </mat-chip>
+      </mat-chip-set>
+    </div>
+
+    <!-- Status Bar -->
+    <div *ngIf="isProcessing || waitingForApproval" class="status-bar">
+      <mat-progress-bar *ngIf="isProcessing" mode="indeterminate"></mat-progress-bar>
+      
+      <div *ngIf="waitingForApproval" class="approval-status">
+        <mat-icon color="warn">schedule</mat-icon>
+        <span>Esperando tu aprobación del plan...</span>
+      </div>
+    </div>
+
+    <!-- Input Field -->
+    <div class="input-container">
+      <mat-form-field appearance="outline" class="prompt-input">
+        <mat-label>
+          <span *ngIf="!waitingForApproval">Escribe un comando o arrastra archivos SVAD...</span>
+          <span *ngIf="waitingForApproval">Responde: ¿Aprobar el plan? (sí/no)</span>
+        </mat-label>
+        
+        <input matInput
+               #promptInput
+               [(ngModel)]="promptText"
+               (keydown)="onKeyDown($event)"
+               [disabled]="isProcessing"
+               [placeholder]="waitingForApproval ? 
+                           'Escribe \'sí\', \'adelante\', \'aprobar\' para continuar...' : 
+                           'Iniciar análisis, adjuntar archivos, dar instrucciones...'"
+               autocomplete="off"
+               spellcheck="false">
+        
+        <!-- File Attach Button -->
+        <button *ngIf="!waitingForApproval" 
+                matSuffix 
+                mat-icon-button 
+                type="button"
+                (click)="openFileSelector()"
+                [disabled]="isProcessing"
+                matTooltip="Adjuntar archivo SVAD">
+          <mat-icon>attach_file</mat-icon>
+        </button>
+
+        <!-- Send Button -->
+        <button matSuffix 
+                mat-icon-button 
+                type="button"
+                (click)="onSendCommand()"
+                [disabled]="isProcessing || (!promptText.trim() && attachedFiles.length === 0)"
+                [color]="waitingForApproval ? 'warn' : 'primary'"
+                [matTooltip]="waitingForApproval ? 'Enviar respuesta de aprobación' : 'Enviar comando'">
+          <mat-icon *ngIf="!isProcessing">
+            {{ waitingForApproval ? 'check_circle' : 'send' }}
+          </mat-icon>
+          <mat-icon *ngIf="isProcessing" class="spinning">sync</mat-icon>
+        </button>
+      </mat-form-field>
+    </div>
+
+    <!-- Hidden File Input -->
+    <input #fileInput
+           type="file"
+           accept=".md,.txt"
+           multiple
+           (change)="onFileSelected($event)"
+           style="display: none;">
+
+    <!-- Drag & Drop Overlay -->
+    <div *ngIf="isDragOver" class="drag-overlay">
+      <div class="drag-content">
+        <mat-icon class="drag-icon">cloud_upload</mat-icon>
+        <h3>Suelta el archivo SVAD aquí</h3>
+        <p>Archivos soportados: .md, .txt</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Connection Status -->
+  <div *ngIf="webSocketState" class="connection-status">
+    <div class="status-indicator" 
+         [class.connected]="webSocketState.status === 'connected'"
+         [class.connecting]="webSocketState.status === 'connecting'"
+         [class.disconnected]="webSocketState.status === 'disconnected'"
+         [class.error]="webSocketState.status === 'error'">
+      
+      <mat-icon *ngIf="webSocketState.status === 'connected'">wifi</mat-icon>
+      <mat-icon *ngIf="webSocketState.status === 'connecting'">wifi_find</mat-icon>
+      <mat-icon *ngIf="webSocketState.status === 'disconnected'">wifi_off</mat-icon>
+      <mat-icon *ngIf="webSocketState.status === 'error'">error</mat-icon>
+      
+      <span class="status-text">
+        {{ webSocketState.status === 'connected' ? 'Conectado' :
+           webSocketState.status === 'connecting' ? 'Conectando...' :
+           webSocketState.status === 'disconnected' ? 'Desconectado' :
+           'Error de conexión' }}
+      </span>
+      
+      <small *ngIf="webSocketState.runId" class="run-id">
+        Run: {{ webSocketState.runId }}
+      </small>
+    </div>
+  </div>
+
+</div>

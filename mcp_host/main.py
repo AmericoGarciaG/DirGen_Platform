@@ -36,6 +36,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 RETRY_STATES = {}
 MAX_RETRIES = 3
 
+# Estados de aprobación por run_id
+APPROVAL_STATES = {}
+# Estados posibles: "waiting_approval", "approved", "rejected"
+
 # --- Gestor de Conexiones WebSocket ---
 class ConnectionManager:
     def __init__(self): self.active_connections: dict[str, WebSocket] = {}
@@ -257,7 +261,7 @@ async def agent_task_complete(run_id: str, request: Request):
             # Tratar como fallo de validación para activar reintentos
             await handle_validation_failure(run_id, reason)
         else:
-            # Tarea completada exitosamente 
+            # Tarea completada exitosamente - NUEVO FLUJO CON APROBACIÓN
             if summary:
                 # Mostrar resumen ejecutivo de forma destacada
                 await manager.broadcast(run_id, {
@@ -270,15 +274,25 @@ async def agent_task_complete(run_id: str, request: Request):
                 })
                 logger.info(f"Executive summary sent to TUI for {run_id}")
             
-            # Proceder con validación como siempre
-            await manager.broadcast(run_id, {"source": "Orchestrator", "type": "info", "data": {"message": "Agente Planificador ha finalizado exitosamente. Iniciando Quality Gate 1."}})
+            # EN LUGAR DE PROCEDER DIRECTAMENTE, ESPERAR APROBACIÓN
+            logger.info(f"Planner completed successfully for {run_id}. Waiting for user approval.")
             
-            # Necesitamos el contenido del PCCE de nuevo para el Validador
-            temp_dir = tempfile.gettempdir()
-            temp_pcce_path = os.path.join(temp_dir, f"{run_id}_pcce.yml")
-            with open(temp_pcce_path, "rb") as f: pcce_content = f.read()
-
-            asyncio.create_task(run_quality_gate_1(run_id, pcce_content))
+            # Establecer estado de espera de aprobación
+            APPROVAL_STATES[run_id] = "waiting_approval"
+            
+            # Enviar mensaje de plan generado para solicitar aprobación
+            await manager.broadcast(run_id, {
+                "source": "Orchestrator", 
+                "type": "plan_generated", 
+                "run_id": run_id,
+                "data": {
+                    "message": "Plan de ejecución generado exitosamente. Se requiere aprobación manual para continuar.",
+                    "tasks": data.get("tasks", []),  # Si el agente envía las tareas
+                    "status": "awaiting_approval"
+                }
+            })
+            
+            logger.info(f"Plan approval request sent for {run_id}. Waiting for user response.")
 
     return {"status": "acknowledged"}
 
@@ -297,6 +311,125 @@ async def validation_result(run_id: str, request: Request):
         await handle_validation_failure(run_id, result.get("message", "Error desconocido"))
     
     return {"status": "processed"}
+
+@app.post("/v1/run/{run_id}/approve_plan")
+async def approve_plan(run_id: str, request: Request):
+    """Endpoint para aprobar o rechazar un plan generado por el Planner"""
+    try:
+        data = await request.json()
+        approved = data.get("approved", False)
+        user_response = data.get("user_response", "")
+        
+        logger.info(f"Plan approval request for {run_id}: approved={approved}, response='{user_response}'")
+        
+        # Verificar que el run esté en estado de espera de aprobación
+        if run_id not in APPROVAL_STATES or APPROVAL_STATES[run_id] != "waiting_approval":
+            logger.warning(f"Run {run_id} is not waiting for approval. Current state: {APPROVAL_STATES.get(run_id, 'unknown')}")
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Run {run_id} is not waiting for approval"
+            )
+        
+        if approved:
+            # Plan aprobado - proceder con la ejecución
+            logger.info(f"Plan approved for {run_id}. Proceeding with execution.")
+            
+            # Actualizar estado
+            APPROVAL_STATES[run_id] = "approved"
+            
+            # Notificar aprobación
+            await manager.broadcast(run_id, {
+                "source": "Orchestrator",
+                "type": "plan_approved",
+                "run_id": run_id,
+                "data": {
+                    "message": f"Plan aprobado por el usuario. Iniciando ejecución...",
+                    "user_response": user_response,
+                    "timestamp": datetime.now().isoformat()
+                }
+            })
+            
+            # Proceder con Quality Gate 1 (validación)
+            await manager.broadcast(run_id, {
+                "source": "Orchestrator", 
+                "type": "info", 
+                "data": {"message": "Plan aprobado. Iniciando Quality Gate 1 (Validación)..."}
+            })
+            
+            # Leer el PCCE y iniciar validación
+            temp_dir = tempfile.gettempdir()
+            temp_pcce_path = os.path.join(temp_dir, f"{run_id}_pcce.yml")
+            
+            if os.path.exists(temp_pcce_path):
+                with open(temp_pcce_path, "rb") as f:
+                    pcce_content = f.read()
+                asyncio.create_task(run_quality_gate_1(run_id, pcce_content))
+            else:
+                logger.error(f"PCCE file not found for {run_id}")
+                await manager.broadcast(run_id, {
+                    "source": "Orchestrator",
+                    "type": "phase_end",
+                    "data": {
+                        "name": "Diseño",
+                        "status": "RECHAZADO",
+                        "reason": "Archivo PCCE no encontrado para validación"
+                    }
+                })
+            
+            return {
+                "status": "approved",
+                "message": "Plan approved and execution started",
+                "run_id": run_id
+            }
+            
+        else:
+            # Plan rechazado
+            logger.info(f"Plan rejected for {run_id}. User response: '{user_response}'")
+            
+            # Actualizar estado
+            APPROVAL_STATES[run_id] = "rejected"
+            
+            # Notificar rechazo
+            await manager.broadcast(run_id, {
+                "source": "Orchestrator",
+                "type": "plan_rejected",
+                "run_id": run_id,
+                "data": {
+                    "message": f"Plan rechazado por el usuario: {user_response}",
+                    "user_response": user_response,
+                    "timestamp": datetime.now().isoformat()
+                }
+            })
+            
+            # Terminar la fase como rechazada
+            await manager.broadcast(run_id, {
+                "source": "Orchestrator",
+                "type": "phase_end",
+                "data": {
+                    "name": "Diseño",
+                    "status": "RECHAZADO",
+                    "reason": f"Plan rechazado por el usuario: {user_response}"
+                }
+            })
+            
+            # Limpiar estados
+            if run_id in APPROVAL_STATES:
+                del APPROVAL_STATES[run_id]
+            
+            return {
+                "status": "rejected",
+                "message": "Plan rejected by user",
+                "run_id": run_id
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing plan approval for {run_id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
 
 async def handle_validation_failure(run_id: str, error_message: str):
     """Maneja fallos de validación con lógica de reintentos inteligente"""

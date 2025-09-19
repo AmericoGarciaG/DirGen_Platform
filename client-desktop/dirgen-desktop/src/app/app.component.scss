@@ -1,0 +1,338 @@
+.dirgen-ide {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #0f0f0f;
+  color: #e0e0e0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+// SDLC Progress Bar
+.sdlc-progress-bar {
+  background: linear-gradient(135deg, #1a1a1a, #2d2d30);
+  border-bottom: 1px solid #404040;
+  padding: 16px 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  
+  .progress-stages {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    max-width: 1000px;
+    margin: 0 auto;
+    
+    .stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      min-width: 120px;
+      position: relative;
+      
+      .stage-icon {
+        font-size: 24px;
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: #2d2d30;
+        border: 2px solid #404040;
+        transition: all 0.3s ease;
+      }
+      
+      .stage-label {
+        font-size: 12px;
+        text-align: center;
+        color: #888;
+        font-weight: 500;
+        transition: color 0.3s ease;
+      }
+      
+      &.active {
+        .stage-icon {
+          background: linear-gradient(135deg, #007acc, #005a99);
+          border-color: #007acc;
+          box-shadow: 0 0 20px rgba(0, 122, 204, 0.3);
+        }
+        
+        .stage-label {
+          color: #007acc;
+          font-weight: 600;
+        }
+      }
+      
+      &.completed {
+        .stage-icon {
+          background: linear-gradient(135deg, #28a745, #1e7e34);
+          border-color: #28a745;
+        }
+        
+        .stage-label {
+          color: #28a745;
+        }
+      }
+    }
+    
+    .stage-connector {
+      flex: 1;
+      height: 2px;
+      background: #404040;
+      margin: 0 8px;
+      position: relative;
+      
+      &.active {
+        background: linear-gradient(90deg, #007acc, #404040);
+      }
+      
+      &.completed {
+        background: #28a745;
+      }
+    }
+  }
+}
+
+// Main Layout
+.main-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  
+  .left-panel {
+    width: 40%;
+    min-width: 400px;
+    background: #1e1e1e;
+    border-right: 1px solid #404040;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  
+  .right-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #0f0f0f;
+    
+    .events-container {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .command-center-container {
+      min-height: 120px;
+      max-height: 200px;
+      background: #1a1a1a;
+      border-top: 1px solid #404040;
+      display: flex;
+      flex-direction: column;
+    }
+  }
+}
+
+// Scrollbar styling
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 4px;
+  
+  &:hover {
+    background: #505050;
+  }
+}
+
+// Responsive design
+@media (max-width: 1024px) {
+  .main-layout {
+    .left-panel {
+      width: 35%;
+      min-width: 320px;
+    }
+  }
+  
+  .sdlc-progress-bar {
+    .progress-stages {
+      .stage {
+        min-width: 80px;
+        
+        .stage-icon {
+          width: 36px;
+          height: 36px;
+          font-size: 18px;
+        }
+        
+        .stage-label {
+          font-size: 11px;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .main-layout {
+    flex-direction: column;
+    
+    .left-panel {
+      width: 100%;
+      min-width: unset;
+      height: 50%;
+      border-right: none;
+      border-bottom: 1px solid #404040;
+    }
+    
+    .right-panel {
+      height: 50%;
+      
+      .command-center-container {
+        min-height: 80px;
+        max-height: 120px;
+      }
+    }
+  }
+}
+
+// Estilos temporales para los componentes inline
+.plan-placeholder {
+  padding: 24px;
+  color: #888;
+  text-align: center;
+  
+  h3 {
+    margin: 0 0 16px;
+    color: #e0e0e0;
+    font-size: 18px;
+  }
+  
+  p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+}
+
+.events-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  overflow: hidden;
+  
+  h3 {
+    margin: 0 0 16px;
+    color: #e0e0e0;
+    font-size: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #404040;
+  }
+  
+  .events-log {
+    flex: 1;
+    overflow-y: auto;
+    background: #0a0a0a;
+    border-radius: 6px;
+    padding: 12px;
+    
+    .event-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 12px;
+      
+      .event-time {
+        color: #888;
+        font-family: 'Courier New', monospace;
+        min-width: 80px;
+      }
+      
+      .event-source {
+        color: #007acc;
+        font-weight: 600;
+        min-width: 100px;
+      }
+      
+      .event-message {
+        color: #e0e0e0;
+        flex: 1;
+      }
+    }
+    
+    .no-events {
+      text-align: center;
+      color: #666;
+      padding: 24px;
+      font-style: italic;
+    }
+  }
+}
+
+.command-center-wrapper {
+  padding: 16px;
+  
+  h3 {
+    margin: 0 0 16px;
+    color: #e0e0e0;
+    font-size: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #404040;
+  }
+  
+  .command-prompt {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    
+    .command-input {
+      flex: 1;
+      background: #2d2d30;
+      border: 1px solid #404040;
+      border-radius: 6px;
+      padding: 12px 16px;
+      color: #e0e0e0;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.3s ease;
+      
+      &::placeholder {
+        color: #888;
+      }
+      
+      &:focus {
+        border-color: #007acc;
+      }
+    }
+    
+    .command-send {
+      background: #007acc;
+      border: none;
+      border-radius: 6px;
+      padding: 12px 16px;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      
+      &:hover {
+        background: #005a99;
+      }
+      
+      &:active {
+        transform: scale(0.95);
+      }
+    }
+  }
+}

@@ -141,6 +141,73 @@ export class LiveEventLogComponent implements OnChanges, AfterViewChecked {
           source
         };
         
+      // Nuevos tipos de mensaje para el flujo de aprobación
+      case 'plan_generated':
+        return {
+          icon: '📋',
+          color: '#ff9800',
+          text: `Plan generado: ${(message as any).data?.message || 'Se ha generado un plan de ejecución'}`,
+          source
+        };
+        
+      case 'plan_approved':
+        return {
+          icon: '✅',
+          color: '#4caf50',
+          text: `Plan aprobado: ${(message as any).data?.message || 'El usuario ha aprobado el plan'}`,
+          source
+        };
+        
+      case 'plan_rejected':
+        return {
+          icon: '❌',
+          color: '#f44336',
+          text: `Plan rechazado: ${(message as any).data?.message || 'El usuario ha rechazado el plan'}`,
+          source
+        };
+        
+      case 'executive_summary':
+        return {
+          icon: '📊',
+          color: '#2196f3',
+          text: `Resumen Ejecutivo (${(message as any).data?.agent_role || 'Agente'}): ${(message as any).data?.summary || 'Resumen disponible'}`,
+          source
+        };
+        
+      case 'retry_attempt':
+        const retryData = (message as any).data;
+        return {
+          icon: '🔄',
+          color: '#ff5722',
+          text: `Reintento ${retryData?.attempt || '?'}/${retryData?.max_attempts || '?'}: ${retryData?.feedback || 'Reintentando...'}`,
+          source
+        };
+        
+      case 'quality_gate_start':
+        return {
+          icon: '🛡️',
+          color: '#9c27b0',
+          text: `Iniciando Quality Gate: ${(message as any).data?.name || 'Validación'}`,
+          source
+        };
+        
+      case 'quality_gate_result':
+        const qgResult = (message as any).data;
+        return {
+          icon: qgResult?.success ? '🛡️✅' : '🛡️❌',
+          color: qgResult?.success ? '#4caf50' : '#f44336',
+          text: `Quality Gate: ${qgResult?.success ? 'Aprobado' : 'Fallido'} - ${qgResult?.message || 'Sin detalles'}`,
+          source
+        };
+        
+      case 'info':
+        return {
+          icon: 'ℹ️',
+          color: '#2196f3',
+          text: (message as any).data?.message || (message as any).message || 'Información del sistema',
+          source
+        };
+        
       default:
         return {
           icon: '📄',

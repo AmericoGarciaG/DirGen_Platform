@@ -241,4 +241,41 @@ export class ApiService {
       messages: updatedMessages
     });
   }
+
+  /**
+   * Aprueba un plan generado por el Orquestador
+   * @param runId - ID del run para el cual aprobar el plan
+   * @param userResponse - Respuesta del usuario (opcional)
+   * @returns Observable con la respuesta de aprobación
+   */
+  approvePlan(runId: string, userResponse?: string): Observable<any> {
+    console.log('📋 Enviando aprobación del plan para run:', runId);
+    console.log('💬 Respuesta del usuario:', userResponse);
+    
+    const body = {
+      approved: true,
+      user_response: userResponse || 'Aprobado'
+    };
+    
+    return this.http.post(
+      `${this.baseUrl}/v1/run/${runId}/approve_plan`,
+      body,
+      {
+        headers: new HttpHeaders({
+          'Content-Type': 'application/json'
+        })
+      }
+    ).pipe(
+      map(response => {
+        console.log('✅ Plan aprobado exitosamente:', response);
+        return response;
+      }),
+      catchError(error => {
+        console.error('❌ Error aprobando plan:');
+        console.error('Status:', error.status);
+        console.error('Error Object:', error);
+        throw error;
+      })
+    );
+  }
 }
