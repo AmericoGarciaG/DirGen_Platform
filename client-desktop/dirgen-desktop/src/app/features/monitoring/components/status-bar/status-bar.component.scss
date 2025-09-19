@@ -1,0 +1,205 @@
+.status-toolbar {
+  background: linear-gradient(90deg, #2c3e50, #34495e) !important;
+  color: #ecf0f1 !important;
+  height: 60px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  border-bottom: 2px solid #3498db;
+  position: relative;
+  z-index: 100;
+
+  .left-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+
+    .app-logo {
+      font-size: 28px;
+      width: 28px;
+      height: 28px;
+      color: #3498db;
+    }
+
+    .app-title {
+      font-size: 18px;
+      font-weight: 500;
+      color: #ecf0f1;
+      letter-spacing: 0.5px;
+    }
+  }
+
+  .center-section {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex: 1;
+    justify-content: center;
+
+    .status-chips {
+      mat-chip {
+        font-weight: 500;
+        font-size: 13px;
+        
+        mat-icon {
+          font-size: 16px;
+          width: 16px;
+          height: 16px;
+          margin-right: 6px;
+        }
+      }
+    }
+
+    .current-phase {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background: rgba(52, 152, 219, 0.2);
+      border-radius: 16px;
+      border: 1px solid #3498db;
+
+      .phase-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        color: #3498db;
+        animation: rotate 2s linear infinite;
+      }
+
+      .phase-text {
+        font-size: 13px;
+        font-weight: 500;
+        color: #ecf0f1;
+        max-width: 200px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+  }
+
+  .right-section {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+
+    .run-info, .runtime-info, .message-count {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      font-size: 12px;
+      color: #bdc3c7;
+
+      mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+        color: #95a5a6;
+      }
+
+      span {
+        font-weight: 500;
+      }
+    }
+
+    .runtime-info {
+      .runtime-text {
+        font-family: 'Courier New', monospace;
+        color: #2ecc71;
+        font-weight: 600;
+      }
+    }
+
+    .websocket-status {
+      mat-chip {
+        font-size: 11px;
+        height: 28px;
+        
+        .websocket-text {
+          font-weight: 500;
+        }
+
+        mat-icon {
+          font-size: 14px;
+          width: 14px;
+          height: 14px;
+          margin-right: 4px;
+        }
+      }
+    }
+  }
+}
+
+// Animación para el icono de fase activa
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+// Responsive design
+@media (max-width: 1024px) {
+  .status-toolbar {
+    .center-section {
+      .current-phase .phase-text {
+        max-width: 150px;
+      }
+    }
+    
+    .right-section {
+      gap: 12px;
+      
+      .run-info, .runtime-info, .message-count {
+        font-size: 11px;
+        
+        mat-icon {
+          font-size: 14px;
+          width: 14px;
+          height: 14px;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .status-toolbar {
+    padding: 0 12px;
+    
+    .left-section {
+      gap: 8px;
+      
+      .app-title {
+        font-size: 16px;
+      }
+    }
+    
+    .center-section {
+      gap: 12px;
+      
+      .current-phase {
+        padding: 4px 8px;
+        
+        .phase-text {
+          max-width: 100px;
+          font-size: 12px;
+        }
+      }
+    }
+    
+    .right-section {
+      gap: 8px;
+      
+      .websocket-status mat-chip .websocket-text {
+        display: none; // Solo mostrar icono en móvil
+      }
+    }
+  }
+}

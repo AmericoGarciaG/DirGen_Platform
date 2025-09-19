@@ -3,16 +3,25 @@ import { Routes } from '@angular/router';
 export const routes: Routes = [
   {
     path: '',
-    redirectTo: '/test-connection',
-    pathMatch: 'full'
+    loadComponent: () => import('./features/monitoring/monitoring-no-statusbar.component').then(m => m.MonitoringNoStatusbarComponent)
   },
   {
-    path: 'test-connection',
-    loadComponent: () => import('./features/test-connection/test-connection.component')
-      .then(m => m.TestConnectionComponent)
+    path: 'monitoring',
+    loadComponent: () => import('./features/monitoring/monitoring.component')
+      .then(m => m.MonitoringComponent)
+  },
+  {
+    path: 'monitoring-web',
+    loadComponent: () => import('./features/monitoring/monitoring.component')
+      .then(m => m.MonitoringComponent)
+  },
+  {
+    path: 'monitoring-ultra-simple',
+    loadComponent: () => import('./features/monitoring/monitoring-ultra-simple.component')
+      .then(m => m.MonitoringUltraSimpleComponent)
   },
   {
     path: '**',
-    redirectTo: '/test-connection'
+    redirectTo: ''
   }
 ];

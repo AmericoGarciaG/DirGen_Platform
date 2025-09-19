@@ -1,4 +1,133 @@
-/* You can add global styles to this file, and also import other style files */
+/* DirGen Desktop - Global Dark Theme Styles */
+
+// Basic styles without Material theme for now
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #1a1a1a;
+  color: #e0e0e0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+// Custom scrollbars
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #2c2c2c;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+  
+  &:hover {
+    background: #666;
+  }
+}
+
+// Global styles
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #1a1a1a;
+  color: #e0e0e0;
+  overflow: hidden; // Prevent body scroll
+}
+
+// Custom scrollbars for the entire app
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #2c2c2c;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+  
+  &:hover {
+    background: #666;
+  }
+}
+
+// Override Angular Material styles for dark theme
+.mat-mdc-card {
+  background: #333 !important;
+  color: #e0e0e0 !important;
+}
+
+.mat-mdc-button, .mat-mdc-raised-button, .mat-mdc-outlined-button {
+  color: #e0e0e0;
+}
+
+.mat-mdc-form-field {
+  .mat-mdc-text-field-wrapper {
+    background: #2a2a2a !important;
+  }
+  
+  .mat-mdc-form-field-label {
+    color: #95a5a6 !important;
+  }
+  
+  input {
+    color: #e0e0e0 !important;
+  }
+}
+
+// Utility classes
+.text-primary { color: #3498db !important; }
+.text-success { color: #27ae60 !important; }
+.text-warning { color: #f39c12 !important; }
+.text-danger { color: #e74c3c !important; }
+.text-info { color: #17a2b8 !important; }
+.text-muted { color: #95a5a6 !important; }
+
+.bg-dark { background: #2c2c2c !important; }
+.bg-darker { background: #1a1a1a !important; }
+
+// Animation classes
+.fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }

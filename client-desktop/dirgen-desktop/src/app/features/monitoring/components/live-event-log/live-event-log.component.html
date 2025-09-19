@@ -1,0 +1,47 @@
+<div class="live-event-log">
+  <div class="log-header">
+    <mat-icon>assignment</mat-icon>
+    <h3>Log de Eventos en Tiempo Real</h3>
+    @if (webSocketState && webSocketState.messages && webSocketState.messages.length) {
+      <mat-chip class="message-counter">{{ webSocketState.messages.length }}</mat-chip>
+    }
+  </div>
+
+  <div class="log-container" #logContainer>
+    @if (!webSocketState || !webSocketState.messages || !webSocketState.messages.length) {
+      <div class="empty-log">
+        <mat-icon>inbox</mat-icon>
+        <p>No hay eventos aún</p>
+        <small>Los mensajes aparecerán aquí cuando inicie una ejecución</small>
+      </div>
+    } @else {
+      <div class="log-entries">
+        @for (message of webSocketState.messages; track message.timestamp) {
+          <div class="log-entry" [attr.data-type]="message.type">
+            <ng-container>
+              <div class="entry-header">
+                <span class="message-icon" [style.color]="parseMessage(message).color">{{ parseMessage(message).icon }}</span>
+                <span class="message-source">{{ parseMessage(message).source }}</span>
+                <span class="message-time">{{ formatTimestamp(message.timestamp) }}</span>
+              </div>
+              
+              <div class="entry-content">
+                <p class="message-text" [style.color]="parseMessage(message).color">
+                  {{ truncateText(parseMessage(message).text) }}
+                </p>
+                
+                <!-- Mostrar JSON original si es necesario (solo para debug) -->
+                @if (parseMessage(message).icon === '❓') {
+                  <details class="raw-message">
+                    <summary>Ver mensaje original</summary>
+                    <pre>{{ message | json }}</pre>
+                  </details>
+                }
+              </div>
+            </ng-container>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

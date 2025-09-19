@@ -5,16 +5,16 @@
   "identifier": "com.tauri.dev",
   "build": {
     "frontendDist": "../dist/dirgen-desktop",
-    "devUrl": "http://localhost:4200",
-    "beforeDevCommand": "npm start",
+    "devUrl": "http://127.0.0.1:4200",
+    "beforeDevCommand": "npm run start:tauri",
     "beforeBuildCommand": "npm run build"
   },
   "app": {
     "windows": [
       {
-        "title": "DirGen AI",
-        "width": 800,
-        "height": 600,
+        "title": "DirGen Desktop",
+        "width": 1200,
+        "height": 800,
         "resizable": true,
         "fullscreen": false
       }

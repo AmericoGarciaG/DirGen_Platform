@@ -1,0 +1,163 @@
+.monitoring-dashboard {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  background: #1a1a1a; // Fondo oscuro
+  color: #e0e0e0;
+  overflow: hidden;
+
+  .status-bar {
+    flex-shrink: 0;
+    height: 60px;
+    background: linear-gradient(90deg, #2c3e50, #34495e);
+    border-bottom: 2px solid #3498db;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  
+  .simple-status-bar {
+    flex-shrink: 0;
+    height: 60px;
+    background: linear-gradient(90deg, #2c3e50, #34495e);
+    border-bottom: 2px solid #3498db;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    
+    mat-icon {
+      color: #3498db;
+      font-size: 28px;
+    }
+    
+    .app-title {
+      flex: 1;
+      font-size: 18px;
+      font-weight: 500;
+      color: #ecf0f1;
+    }
+    
+    .status-indicator {
+      font-weight: 500;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: rgba(0,0,0,0.2);
+    }
+    
+    .message-count {
+      color: #f39c12;
+      font-weight: 500;
+      padding: 4px 8px;
+      background: rgba(243, 156, 18, 0.2);
+      border-radius: 4px;
+    }
+  }
+
+  .main-content {
+    flex: 1;
+    display: flex;
+    height: calc(100vh - 60px);
+    
+    .left-panel {
+      width: 35%;
+      min-width: 400px;
+      background: #2c2c2c;
+      border-right: 2px solid #444;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      gap: 16px;
+      overflow-y: auto;
+
+      .project-control-section {
+        flex-shrink: 0;
+        background: #333;
+        border-radius: 8px;
+        border: 1px solid #555;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      }
+
+      .plan-widget-section {
+        flex: 1;
+        background: #333;
+        border-radius: 8px;
+        border: 1px solid #555;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        min-height: 300px;
+      }
+    }
+
+    .right-panel {
+      width: 65%;
+      background: #1e1e1e;
+      display: flex;
+      flex-direction: column;
+
+      .live-event-log-section {
+        flex: 1;
+        padding: 16px;
+        overflow: hidden;
+        background: #2a2a2a;
+        border-radius: 8px;
+        margin: 16px;
+        border: 1px solid #444;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      }
+    }
+  }
+}
+
+// Scrollbar personalizado para tema oscuro
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #2c2c2c;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+  
+  &:hover {
+    background: #666;
+  }
+}
+
+// Responsive design
+@media (max-width: 1200px) {
+  .monitoring-dashboard .main-content {
+    .left-panel {
+      width: 40%;
+      min-width: 350px;
+    }
+    
+    .right-panel {
+      width: 60%;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .monitoring-dashboard .main-content {
+    flex-direction: column;
+    
+    .left-panel, .right-panel {
+      width: 100%;
+      min-width: unset;
+    }
+    
+    .left-panel {
+      height: 40%;
+      border-right: none;
+      border-bottom: 2px solid #444;
+    }
+    
+    .right-panel {
+      height: 60%;
+    }
+  }
+}

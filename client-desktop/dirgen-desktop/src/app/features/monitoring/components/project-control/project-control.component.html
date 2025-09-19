@@ -1,0 +1,75 @@
+<mat-card class="project-control-card">
+  <mat-card-header>
+    <mat-card-title>
+      <mat-icon>play_circle</mat-icon>
+      Control de Ejecución
+    </mat-card-title>
+  </mat-card-header>
+
+  <mat-card-content>
+    <!-- File Selection -->
+    <div class="file-section">
+      <h4>Seleccionar Documento SVAD</h4>
+      
+      <input 
+        type="file" 
+        (change)="onFileSelected($event)"
+        accept=".md,.txt"
+        #fileInput
+        class="file-input">
+      
+      @if (selectedFile) {
+        <div class="selected-file">
+          <mat-icon>{{ getFileIcon(selectedFile.name) }}</mat-icon>
+          <div class="file-info">
+            <span class="file-name">{{ selectedFile.name }}</span>
+            <small class="file-size">{{ formatFileSize(selectedFile.size) }}</small>
+          </div>
+          <button 
+            mat-icon-button 
+            (click)="clearSelection()"
+            matTooltip="Quitar archivo">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      }
+    </div>
+
+    <mat-divider></mat-divider>
+
+    <!-- Actions -->
+    <div class="actions-section">
+      <div class="action-buttons">
+        <button 
+          mat-raised-button 
+          color="primary"
+          (click)="startExecution()"
+          [disabled]="!selectedFile || isLoading"
+          class="start-button">
+          @if (isLoading) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            <mat-icon>rocket_launch</mat-icon>
+          }
+          Iniciar Análisis
+        </button>
+        
+        <button 
+          mat-stroked-button 
+          color="warn"
+          (click)="stopExecution()"
+          [disabled]="!isLoading">
+          <mat-icon>stop</mat-icon>
+          Detener
+        </button>
+      </div>
+      
+      @if (error) {
+        <div class="error-message">
+          <mat-icon color="warn">error</mat-icon>
+          <span>{{ error }}</span>
+        </div>
+      }
+    </div>
+  </mat-card-content>
+</mat-card>

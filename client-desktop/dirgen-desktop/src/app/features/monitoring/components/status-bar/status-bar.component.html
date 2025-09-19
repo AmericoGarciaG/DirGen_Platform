@@ -1,0 +1,74 @@
+<mat-toolbar class="status-toolbar">
+  
+  <!-- Sección izquierda: Logo y título -->
+  <div class="left-section">
+    <mat-icon class="app-logo">developer_board</mat-icon>
+    <span class="app-title">DirGen Monitor</span>
+  </div>
+  
+  <!-- Sección central: Estado de ejecución y fase actual -->
+  <div class="center-section">
+    
+    <!-- Estado general -->
+    <mat-chip-set class="status-chips">
+      <mat-chip 
+        [style.background-color]="getStatusColor()"
+        [style.color]="'white'"
+        [matTooltip]="getStatusText()">
+        <mat-icon>{{ getStatusIcon() }}</mat-icon>
+        {{ getStatusText() }}
+      </mat-chip>
+    </mat-chip-set>
+    
+    <!-- Fase actual -->
+    @if (currentPhase && executionState.isRunning) {
+      <div class="current-phase">
+        <mat-icon class="phase-icon">settings</mat-icon>
+        <span class="phase-text">{{ currentPhase }}</span>
+      </div>
+    }
+    
+  </div>
+  
+  <!-- Sección derecha: Información técnica -->
+  <div class="right-section">
+    
+    <!-- Run ID -->
+    @if (executionState.runId) {
+      <div class="run-info" [matTooltip]="executionState.runId">
+        <mat-icon>fingerprint</mat-icon>
+        <span>{{ formatRunId(executionState.runId) }}</span>
+      </div>
+    }
+    
+    <!-- Tiempo de ejecución -->
+    @if (executionState.isRunning) {
+      <div class="runtime-info">
+        <mat-icon>schedule</mat-icon>
+        <span class="runtime-text">{{ runTime }}</span>
+      </div>
+    }
+    
+    <!-- Estado de WebSocket -->
+    <mat-chip-set class="websocket-status">
+      <mat-chip
+        [style.background-color]="getWebSocketStatusColor()"
+        [style.color]="'white'"
+        [matTooltip]="getWebSocketStatusText()"
+        size="small">
+        <mat-icon>{{ getWebSocketStatusIcon() }}</mat-icon>
+        <span class="websocket-text">{{ getWebSocketStatusText() }}</span>
+      </mat-chip>
+    </mat-chip-set>
+    
+    <!-- Contador de mensajes -->
+    @if (webSocketState && webSocketState.messages && webSocketState.messages.length) {
+      <div class="message-count" matTooltip="Mensajes recibidos">
+        <mat-icon>message</mat-icon>
+        <span>{{ webSocketState.messages.length }}</span>
+      </div>
+    }
+    
+  </div>
+  
+</mat-toolbar>
