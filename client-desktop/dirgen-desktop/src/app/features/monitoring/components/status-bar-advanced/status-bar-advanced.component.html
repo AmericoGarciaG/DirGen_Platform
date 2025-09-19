@@ -1,0 +1,121 @@
+<mat-toolbar class="status-toolbar-advanced">
+  
+  <!-- Sección izquierda: Logo y título -->
+  <div class="left-section">
+    <mat-icon class="app-logo" [class.pulse]="isProcessing">developer_board</mat-icon>
+    <span class="app-title">DirGen Monitor Web</span>
+    
+    <!-- Reloj en tiempo real -->
+    <div class="live-clock" matTooltip="Hora actual">
+      <mat-icon class="clock-icon">schedule</mat-icon>
+      <span class="time-display">{{ currentTime }}</span>
+    </div>
+  </div>
+  
+  <!-- Sección central: Estado completo con animaciones -->
+  <div class="center-section">
+    
+    <!-- Estado general con animación -->
+    <mat-chip-set class="status-chips" [class.processing]="isProcessing">
+      <mat-chip 
+        [style.background-color]="getStatusColor()"
+        [style.color]="'white'"
+        [matTooltip]="getStatusText() + (executionState.runId ? ' - ID: ' + executionState.runId : '')"
+        [class.success-pulse]="showSuccessAnimation">
+        <mat-icon [class.spinning]="isProcessing">{{ getStatusIcon() }}</mat-icon>
+        {{ getStatusText() }}
+      </mat-chip>
+    </mat-chip-set>
+    
+    <!-- Progress bar animada -->
+    <div class="progress-container" *ngIf="executionState.isRunning || progressPercentage > 0">
+      <mat-progress-bar 
+        [value]="progressPercentage"
+        [color]="getProgressColor()"
+        mode="determinate"
+        class="animated-progress">
+      </mat-progress-bar>
+      <span class="progress-text">{{ completionPercentage }}%</span>
+    </div>
+    
+    <!-- Fase detallada con descripción -->
+    <div class="phase-detail" *ngIf="currentPhase && currentPhase !== 'Sin actividad'" 
+         [matTooltip]="getPhaseDescription()">
+      <mat-icon class="phase-icon" [class.rotating]="isProcessing">settings</mat-icon>
+      <div class="phase-info">
+        <span class="phase-name">{{ currentPhase }}</span>
+        <small class="phase-description">{{ getPhaseDescription() }}</small>
+      </div>
+    </div>
+    
+  </div>
+  
+  <!-- Sección derecha: Información técnica expandida -->
+  <div class="right-section">
+    
+    <!-- Run ID completo con botón de copia -->
+    <div class="run-info-complete" *ngIf="executionState.runId" 
+         matTooltip="Haz clic para copiar el Run ID completo">
+      <mat-icon class="id-icon">fingerprint</mat-icon>
+      <span class="run-id-display">{{ formatRunId(executionState.runId) }}</span>
+      <button mat-icon-button (click)="copyRunId()" class="copy-btn">
+        <mat-icon>content_copy</mat-icon>
+      </button>
+    </div>
+    
+    <!-- Estadísticas detalladas -->
+    <div class="stats-section" *ngIf="executionState.isRunning || processedFiles > 0">
+      <div class="stat-item" matTooltip="Archivos procesados">
+        <mat-icon>folder</mat-icon>
+        <span class="stat-value">{{ processedFiles }}/{{ totalFiles }}</span>
+      </div>
+      <div class="stat-item" matTooltip="Velocidad de procesamiento" *ngIf="processingSpeed > 0">
+        <mat-icon class="speed-icon" [class.pulse]="isProcessing">speed</mat-icon>
+        <span class="stat-value">{{ processingSpeed }} f/s</span>
+      </div>
+      <div class="stat-item" matTooltip="Porcentaje completado">
+        <mat-icon>percent</mat-icon>
+        <span class="stat-value">{{ completionPercentage }}%</span>
+      </div>
+    </div>
+    
+    <!-- Timer expandido con ETA -->
+    <div class="runtime-expanded" *ngIf="executionState.isRunning">
+      <div class="runtime-main" matTooltip="Tiempo transcurrido">
+        <mat-icon>timer</mat-icon>
+        <span class="runtime-text">{{ formatDetailedTime() }}</span>
+      </div>
+      <div class="eta-info" *ngIf="estimatedTimeRemaining" matTooltip="Tiempo estimado restante">
+        <mat-icon class="eta-icon">schedule</mat-icon>
+        <span class="eta-text">ETA: {{ estimatedTimeRemaining }}</span>
+      </div>
+    </div>
+    
+    <!-- Estado de WebSocket mejorado -->
+    <mat-chip-set class="websocket-status">
+      <mat-chip
+        [style.background-color]="getWebSocketStatusColor()"
+        [style.color]="'white'"
+            [matTooltip]="getConnectionStatusText() + ' - ' + (webSocketState.messages.length || 0) + ' mensajes'"
+        size="small"
+        [matBadge]="webSocketState.messages.length || 0"
+        matBadgePosition="after"
+        [matBadgeHidden]="!webSocketState.messages.length">
+        <mat-icon [class.pulse]="webSocketState.status === 'connected'">
+          {{ getWebSocketStatusIcon() }}
+        </mat-icon>
+        <span class="websocket-text">{{ getWebSocketStatusText() }}</span>
+      </mat-chip>
+    </mat-chip-set>
+    
+  </div>
+  
+</mat-toolbar>
+
+<!-- Indicators flotantes para notificaciones -->
+<div class="floating-indicators" *ngIf="showSuccessAnimation">
+  <div class="success-indicator">
+    <mat-icon>check_circle</mat-icon>
+    <span>¡Completado con éxito!</span>
+  </div>
+</div>

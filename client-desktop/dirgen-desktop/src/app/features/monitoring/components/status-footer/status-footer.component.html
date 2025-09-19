@@ -1,0 +1,238 @@
+<div class="status-footer" [class.expanded]="isExpanded">
+  
+  <!-- Barra principal del footer -->
+  <mat-toolbar class="footer-toolbar">
+    
+    <!-- Sección izquierda: Métricas del sistema -->
+    <div class="left-section" *ngIf="showMetrics">
+      <button mat-icon-button 
+              (click)="toggleMetrics()" 
+              matTooltip="Ocultar métricas del sistema"
+              class="metrics-toggle">
+        <mat-icon>monitoring</mat-icon>
+      </button>
+      
+      <div class="system-metrics">
+        <!-- CPU Usage -->
+        <div class="metric-item" matTooltip="Uso de CPU">
+          <mat-icon class="metric-icon cpu-icon">memory</mat-icon>
+          <div class="metric-info">
+            <span class="metric-label">CPU</span>
+            <div class="metric-progress">
+              <mat-progress-bar 
+                [value]="systemMetrics.cpuUsage"
+                [color]="getMetricColor(systemMetrics.cpuUsage, 'cpu')"
+                mode="determinate">
+              </mat-progress-bar>
+              <span class="metric-value">{{ systemMetrics.cpuUsage.toFixed(0) }}%</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Memory Usage -->
+        <div class="metric-item" [matTooltip]="formatMemoryUsage(systemMetrics.memoryUsage)">
+          <mat-icon class="metric-icon memory-icon">storage</mat-icon>
+          <div class="metric-info">
+            <span class="metric-label">RAM</span>
+            <div class="metric-progress">
+              <mat-progress-bar 
+                [value]="systemMetrics.memoryUsage"
+                [color]="getMetricColor(systemMetrics.memoryUsage, 'memory')"
+                mode="determinate">
+              </mat-progress-bar>
+              <span class="metric-value">{{ systemMetrics.memoryUsage.toFixed(0) }}%</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Network Speed -->
+        <div class="metric-item" matTooltip="Velocidad de red">
+          <mat-icon class="metric-icon network-icon" 
+                    [class.active]="systemMetrics.networkSpeed > 0.5">wifi</mat-icon>
+          <div class="metric-info">
+            <span class="metric-label">Red</span>
+            <span class="metric-value network-speed">
+              {{ formatNetworkSpeed(systemMetrics.networkSpeed) }}
+            </span>
+          </div>
+        </div>
+        
+        <!-- Disk Usage -->
+        <div class="metric-item" matTooltip="Velocidad de E/S del disco">
+          <mat-icon class="metric-icon disk-icon">hard_drive</mat-icon>
+          <div class="metric-info">
+            <span class="metric-label">Disco</span>
+            <span class="metric-value">{{ systemMetrics.diskUsage.toFixed(1) }} MB/s</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Botón para mostrar métricas si están ocultas -->
+    <button mat-icon-button 
+            *ngIf="!showMetrics"
+            (click)="toggleMetrics()" 
+            matTooltip="Mostrar métricas del sistema"
+            class="metrics-toggle">
+      <mat-icon>visibility</mat-icon>
+    </button>
+    
+    <!-- Sección central: Log resumido -->
+    <div class="center-section">
+      <div class="recent-log" *ngIf="recentMessages.length > 0">
+        <button mat-icon-button 
+                (click)="toggleExpanded()" 
+                [matTooltip]="isExpanded ? 'Colapsar log' : 'Expandir log'"
+                class="expand-toggle">
+          <mat-icon [class.rotated]="isExpanded">expand_more</mat-icon>
+        </button>
+        
+        <div class="log-preview">
+          <span class="log-title">Últimos eventos:</span>
+          <div class="log-messages" [class.expanded]="isExpanded">
+            <div class="log-message" 
+                 *ngFor="let message of recentMessages" 
+                 [style.color]="getMessageColor(message)">
+              <mat-icon class="message-icon">{{ getMessageIcon(message) }}</mat-icon>
+              <span class="message-time">{{ formatTimestamp(message.timestamp) }}</span>
+              <span class="message-content">{{ message.type }}</span>
+            </div>
+          </div>
+        </div>
+        
+        <button mat-icon-button 
+                (click)="openFullLog()" 
+                matTooltip="Abrir log completo"
+                class="full-log-btn">
+          <mat-icon>open_in_new</mat-icon>
+        </button>
+      </div>
+      
+      <!-- Mensaje cuando no hay logs -->
+      <div class="no-messages" *ngIf="recentMessages.length === 0">
+        <mat-icon>inbox</mat-icon>
+        <span>Sin eventos recientes</span>
+      </div>
+    </div>
+    
+    <!-- Sección derecha: Enlaces rápidos y controles -->
+    <div class="right-section">
+      
+      <!-- Enlaces rápidos -->
+      <div class="quick-links">
+        <button mat-icon-button 
+                *ngFor="let link of quickLinks"
+                (click)="link.action()"
+                [matTooltip]="link.tooltip"
+                class="quick-link-btn">
+          <mat-icon>{{ link.icon }}</mat-icon>
+        </button>
+      </div>
+      
+      <mat-divider vertical></mat-divider>
+      
+      <!-- Controles avanzados -->
+      <div class="advanced-controls">
+        <button mat-button 
+                *ngFor="let action of quickActions"
+                (click)="action.action()"
+                [disabled]="action.disabled"
+                [matTooltip]="action.tooltip"
+                [color]="action.id === 'stop' ? 'warn' : 'primary'"
+                class="control-btn">
+          <mat-icon>{{ action.icon }}</mat-icon>
+          <span>{{ action.label }}</span>
+        </button>
+      </div>
+      
+      <!-- Menú adicional -->
+      <button mat-icon-button 
+              [matMenuTriggerFor]="footerMenu"
+              matTooltip="Más opciones"
+              class="menu-trigger">
+        <mat-icon>more_vert</mat-icon>
+      </button>
+      
+    </div>
+    
+  </mat-toolbar>
+  
+  <!-- Panel expandido con información adicional -->
+  <div class="expanded-panel" *ngIf="isExpanded">
+    <mat-divider></mat-divider>
+    
+    <div class="expanded-content">
+      <!-- Información detallada del sistema -->
+      <div class="system-info">
+        <h4>
+          <mat-icon>info</mat-icon>
+          Información del Sistema
+        </h4>
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Entorno:</span>
+            <span class="info-value">{{ environmentDetector.getCurrentEnvironment().type | titlecase }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Plataforma:</span>
+            <span class="info-value">{{ environmentDetector.getCurrentEnvironment().platform }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Mensajes totales:</span>
+            <span class="info-value">{{ webSocketState.messages.length || 0 }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Estado WebSocket:</span>
+            <mat-chip class="status-chip" [style.background-color]="getWebSocketStatusColor()">
+              {{ webSocketState.status || 'disconnected' }}
+            </mat-chip>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Acciones adicionales -->
+      <div class="additional-actions">
+        <h4>
+          <mat-icon>build</mat-icon>
+          Acciones Avanzadas
+        </h4>
+        <div class="action-buttons">
+          <button mat-stroked-button (click)="clearMessages()" class="action-btn">
+            <mat-icon>clear_all</mat-icon>
+            Limpiar Mensajes
+          </button>
+          <button mat-stroked-button (click)="triggerAction('restart')" class="action-btn">
+            <mat-icon>refresh</mat-icon>
+            Reiniciar Servicio
+          </button>
+          <button mat-stroked-button (click)="triggerAction('diagnostic')" class="action-btn">
+            <mat-icon>bug_report</mat-icon>
+            Diagnóstico
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+</div>
+
+<!-- Menú contextual -->
+<mat-menu #footerMenu="matMenu" class="footer-menu">
+  <button mat-menu-item (click)="triggerAction('about')">
+    <mat-icon>info</mat-icon>
+    <span>Acerca de</span>
+  </button>
+  <button mat-menu-item (click)="triggerAction('shortcuts')">
+    <mat-icon>keyboard</mat-icon>
+    <span>Atajos de teclado</span>
+  </button>
+  <mat-divider></mat-divider>
+  <button mat-menu-item (click)="toggleMetrics()">
+    <mat-icon>{{ showMetrics ? 'visibility_off' : 'visibility' }}</mat-icon>
+    <span>{{ showMetrics ? 'Ocultar' : 'Mostrar' }} métricas</span>
+  </button>
+  <button mat-menu-item (click)="triggerAction('reset-layout')">
+    <mat-icon>restore</mat-icon>
+    <span>Resetear diseño</span>
+  </button>
+</mat-menu>

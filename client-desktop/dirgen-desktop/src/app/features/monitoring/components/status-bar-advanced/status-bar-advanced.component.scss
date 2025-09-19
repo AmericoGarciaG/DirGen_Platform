@@ -1,0 +1,512 @@
+// StatusBar Avanzado para Web - Con animaciones y efectos visuales
+.status-toolbar-advanced {
+  background: linear-gradient(135deg, #1e3c72, #2a5298, #3498db) !important;
+  color: white !important;
+  height: 80px !important; // Más alto para acomodar contenido adicional
+  padding: 0 24px !important;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+  position: relative;
+  overflow: hidden;
+  
+  // Efecto de ondas de fondo
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    animation: wave 3s infinite;
+  }
+
+  // ===============================
+  // SECCIÓN IZQUIERDA
+  // ===============================
+  .left-section {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex: 0 0 auto;
+    z-index: 2;
+    
+    .app-logo {
+      font-size: 36px !important;
+      width: 36px !important;
+      height: 36px !important;
+      color: #f39c12 !important;
+      transition: all 0.3s ease;
+      
+      &.pulse {
+        animation: logoPulse 2s infinite;
+        filter: drop-shadow(0 0 10px #f39c12);
+      }
+    }
+    
+    .app-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #ecf0f1;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    
+    .live-clock {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 8px 16px;
+      border-radius: 25px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      
+      .clock-icon {
+        font-size: 18px;
+        color: #3498db;
+        animation: clockTick 1s infinite;
+      }
+      
+      .time-display {
+        font-family: 'Courier New', monospace;
+        font-size: 16px;
+        font-weight: 500;
+        color: #ecf0f1;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+      }
+    }
+  }
+
+  // ===============================
+  // SECCIÓN CENTRAL
+  // ===============================
+  .center-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    z-index: 2;
+    
+    .status-chips {
+      margin: 0 !important;
+      
+      &.processing {
+        animation: chipGlow 2s infinite alternate;
+      }
+      
+      mat-chip {
+        border-radius: 20px !important;
+        padding: 8px 16px !important;
+        font-weight: 500 !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        transition: all 0.3s ease !important;
+        
+        &.success-pulse {
+          animation: successPulse 0.6s ease-in-out 3;
+        }
+        
+        mat-icon {
+          margin-right: 8px !important;
+          
+          &.spinning {
+            animation: spin 2s linear infinite;
+          }
+        }
+      }
+    }
+    
+    .progress-container {
+      width: 300px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      
+      .animated-progress {
+        flex: 1;
+        height: 8px !important;
+        border-radius: 4px !important;
+        background: rgba(255, 255, 255, 0.1) !important;
+        
+        ::ng-deep .mdc-linear-progress__bar-inner {
+          border-radius: 4px !important;
+          animation: progressShimmer 2s infinite;
+        }
+      }
+      
+      .progress-text {
+        font-size: 12px;
+        font-weight: 600;
+        color: #f39c12;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+      }
+    }
+    
+    .phase-detail {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      
+      .phase-icon {
+        font-size: 16px;
+        color: #e67e22;
+        
+        &.rotating {
+          animation: rotate 3s linear infinite;
+        }
+      }
+      
+      .phase-info {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        
+        .phase-name {
+          font-size: 13px;
+          font-weight: 500;
+          color: #ecf0f1;
+        }
+        
+        .phase-description {
+          font-size: 10px;
+          color: #95a5a6;
+          font-style: italic;
+        }
+      }
+    }
+  }
+
+  // ===============================
+  // SECCIÓN DERECHA
+  // ===============================
+  .right-section {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 0 0 auto;
+    z-index: 2;
+    
+    .run-info-complete {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 8px 12px;
+      border-radius: 15px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      
+      &:hover {
+        background: rgba(0, 0, 0, 0.3);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      }
+      
+      .id-icon {
+        font-size: 18px;
+        color: #3498db;
+      }
+      
+      .run-id-display {
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        font-weight: 500;
+        color: #ecf0f1;
+      }
+      
+      .copy-btn {
+        width: 24px !important;
+        height: 24px !important;
+        line-height: 24px !important;
+        
+        mat-icon {
+          font-size: 16px !important;
+          color: #95a5a6;
+          transition: color 0.3s ease;
+        }
+        
+        &:hover mat-icon {
+          color: #3498db;
+        }
+      }
+    }
+    
+    .stats-section {
+      display: flex;
+      gap: 12px;
+      
+      .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(0, 0, 0, 0.2);
+        padding: 6px 10px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        
+        mat-icon {
+          font-size: 16px;
+          color: #27ae60;
+          
+          &.speed-icon.pulse {
+            animation: speedPulse 1.5s infinite;
+          }
+        }
+        
+        .stat-value {
+          font-size: 11px;
+          font-weight: 500;
+          color: #ecf0f1;
+          font-family: 'Courier New', monospace;
+        }
+      }
+    }
+    
+    .runtime-expanded {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      
+      .runtime-main {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        
+        mat-icon {
+          font-size: 16px;
+          color: #f39c12;
+        }
+        
+        .runtime-text {
+          font-family: 'Courier New', monospace;
+          font-size: 14px;
+          font-weight: 600;
+          color: #ecf0f1;
+          text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+      }
+      
+      .eta-info {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        
+        .eta-icon {
+          font-size: 12px;
+          color: #e67e22;
+        }
+        
+        .eta-text {
+          font-size: 10px;
+          color: #95a5a6;
+          font-family: 'Courier New', monospace;
+        }
+      }
+    }
+    
+    .websocket-status {
+      mat-chip {
+        border-radius: 15px !important;
+        padding: 6px 12px !important;
+        font-size: 11px !important;
+        
+        mat-icon.pulse {
+          animation: pulse 2s infinite;
+        }
+        
+        .websocket-text {
+          margin-left: 4px;
+        }
+      }
+    }
+  }
+}
+
+// ===============================
+// INDICADORES FLOTANTES
+// ===============================
+.floating-indicators {
+  position: fixed;
+  top: 100px;
+  right: 24px;
+  z-index: 9999;
+  
+  .success-indicator {
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 25px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 8px 32px rgba(39, 174, 96, 0.4);
+    animation: slideInSuccess 0.5s ease-out;
+    
+    mat-icon {
+      font-size: 20px;
+    }
+    
+    span {
+      font-weight: 500;
+    }
+  }
+}
+
+// ===============================
+// ANIMACIONES
+// ===============================
+@keyframes wave {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+@keyframes logoPulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 5px #f39c12); }
+  50% { transform: scale(1.1); filter: drop-shadow(0 0 15px #f39c12); }
+}
+
+@keyframes clockTick {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(6deg); }
+}
+
+@keyframes chipGlow {
+  0% { box-shadow: 0 0 10px rgba(52, 152, 219, 0.3); }
+  100% { box-shadow: 0 0 20px rgba(52, 152, 219, 0.6); }
+}
+
+@keyframes successPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 10px rgba(39, 174, 96, 0.3); }
+  50% { transform: scale(1.05); box-shadow: 0 0 25px rgba(39, 174, 96, 0.7); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes progressShimmer {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+@keyframes speedPulse {
+  0%, 100% { color: #27ae60; transform: scale(1); }
+  50% { color: #2ecc71; transform: scale(1.1); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(0.95); }
+}
+
+@keyframes slideInSuccess {
+  0% {
+    transform: translateX(100px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+// ===============================
+// RESPONSIVE DESIGN
+// ===============================
+@media (max-width: 1400px) {
+  .status-toolbar-advanced {
+    height: 70px !important;
+    padding: 0 16px !important;
+    
+    .left-section {
+      gap: 16px;
+      
+      .app-logo {
+        font-size: 32px !important;
+        width: 32px !important;
+        height: 32px !important;
+      }
+      
+      .app-title {
+        font-size: 18px;
+      }
+    }
+    
+    .center-section {
+      .progress-container {
+        width: 250px;
+      }
+    }
+    
+    .right-section {
+      gap: 12px;
+      
+      .stats-section {
+        gap: 8px;
+        
+        .stat-item {
+          padding: 4px 8px;
+          
+          .stat-value {
+            font-size: 10px;
+          }
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 1200px) {
+  .status-toolbar-advanced {
+    .center-section {
+      .phase-detail {
+        .phase-info {
+          .phase-description {
+            display: none; // Ocultar descripción en pantallas pequeñas
+          }
+        }
+      }
+    }
+    
+    .right-section {
+      .stats-section {
+        .stat-item:nth-child(n+3) {
+          display: none; // Ocultar estadísticas menos importantes
+        }
+      }
+    }
+  }
+}
+
+// ===============================
+// SNACKBAR PERSONALIZADO
+// ===============================
+::ng-deep {
+  .snackbar-success {
+    background: linear-gradient(135deg, #27ae60, #2ecc71) !important;
+    color: white !important;
+  }
+  
+  .snackbar-error {
+    background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
+    color: white !important;
+  }
+  
+  .snackbar-info {
+    background: linear-gradient(135deg, #3498db, #2980b9) !important;
+    color: white !important;
+  }
+}

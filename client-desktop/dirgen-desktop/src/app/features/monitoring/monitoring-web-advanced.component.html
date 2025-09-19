@@ -1,0 +1,75 @@
+<!-- DirGen Monitoring Dashboard - Versión Web Avanzada -->
+<div class="monitoring-dashboard-advanced">
+  
+  <!-- StatusBar Avanzado - Barra superior con todas las funcionalidades -->
+  <app-status-bar-advanced 
+    [webSocketState]="webSocketState"
+    class="status-bar-section">
+  </app-status-bar-advanced>
+  
+  <!-- Mensaje de bienvenida temporal -->
+  <div class="welcome-banner" *ngIf="showWelcomeMessage">
+    <div class="welcome-content">
+      <mat-icon class="welcome-icon">rocket_launch</mat-icon>
+      <span class="welcome-text">🌐 Interfaz Web Avanzada cargada - Todas las funcionalidades restauradas</span>
+      <button mat-icon-button (click)="showWelcomeMessage = false" class="close-welcome">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  </div>
+  
+  <!-- Main Content - Layout horizontal con paneles mejorados -->
+  <div class="main-content">
+    
+    <!-- Left Panel - Panel izquierdo (35% del ancho) -->
+    <div class="left-panel">
+      
+      <!-- Project Control Section -->
+      <div class="control-section">
+        <app-project-control 
+          class="project-control-component"
+          (executionStarted)="onExecutionStarted($event)">
+        </app-project-control>
+      </div>
+      
+      <!-- Plan Widget Section -->
+      <div class="plan-section">
+        <app-plan-widget 
+          [webSocketState]="webSocketState"
+          class="plan-widget-component">
+        </app-plan-widget>
+      </div>
+      
+    </div>
+    
+    <!-- Right Panel - Panel derecho (65% del ancho) -->
+    <div class="right-panel">
+      
+      <!-- Live Event Log -->
+      <div class="log-section">
+        <app-live-event-log 
+          [webSocketState]="webSocketState"
+          class="live-event-log-component">
+        </app-live-event-log>
+      </div>
+      
+    </div>
+    
+  </div>
+  
+  <!-- StatusFooter Avanzado - Barra inferior con métricas del sistema -->
+  <app-status-footer 
+    [webSocketState]="webSocketState"
+    (actionTriggered)="onFooterAction($event)"
+    class="status-footer-section">
+  </app-status-footer>
+  
+</div>
+
+<!-- Indicadores flotantes para estados especiales -->
+<div class="floating-indicators" *ngIf="isAnalysisRunning">
+  <div class="analysis-indicator">
+    <mat-icon class="spinning">autorenew</mat-icon>
+    <span>Análisis en progreso...</span>
+  </div>
+</div>

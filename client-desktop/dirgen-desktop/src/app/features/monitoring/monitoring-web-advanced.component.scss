@@ -1,0 +1,560 @@
+// MonitoringWebAdvanced - Interfaz completa para navegador web
+.monitoring-dashboard-advanced {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  background: #1a1a1a;
+  color: #e0e0e0;
+  overflow: hidden;
+  position: relative;
+
+  // ===============================
+  // STATUSBAR AVANZADO
+  // ===============================
+  .status-bar-section {
+    flex-shrink: 0;
+    z-index: 100;
+  }
+
+  // ===============================
+  // MENSAJE DE BIENVENIDA
+  // ===============================
+  .welcome-banner {
+    position: absolute;
+    top: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    animation: slideDown 0.5s ease-out;
+    
+    .welcome-content {
+      background: linear-gradient(135deg, #27ae60, #2ecc71);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 25px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 8px 32px rgba(39, 174, 96, 0.4);
+      backdrop-filter: blur(10px);
+      
+      .welcome-icon {
+        font-size: 24px;
+        animation: bounce 2s infinite;
+      }
+      
+      .welcome-text {
+        font-weight: 500;
+        font-size: 14px;
+      }
+      
+      .close-welcome {
+        color: white !important;
+        width: 32px !important;
+        height: 32px !important;
+        
+        mat-icon {
+          font-size: 18px !important;
+        }
+      }
+    }
+  }
+
+  // ===============================
+  // CONTENIDO PRINCIPAL
+  // ===============================
+  .main-content {
+    flex: 1;
+    display: flex;
+    height: calc(100vh - 140px); // Altura total - StatusBar(80px) - Footer(60px)
+    position: relative;
+    
+    // Panel izquierdo mejorado
+    .left-panel {
+      width: 35%;
+      min-width: 420px;
+      background: linear-gradient(180deg, #2c2c2c, #252525);
+      border-right: 3px solid #3498db;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      gap: 20px;
+      overflow-y: auto;
+      position: relative;
+      
+      // Efecto de gradiente en el borde
+      &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 3px;
+        height: 100%;
+        background: linear-gradient(180deg, #3498db, #2980b9, #3498db);
+        animation: borderGlow 3s infinite;
+      }
+
+      .control-section {
+        flex-shrink: 0;
+        background: rgba(52, 152, 219, 0.1);
+        border-radius: 12px;
+        border: 1px solid rgba(52, 152, 219, 0.3);
+        padding: 16px;
+        box-shadow: 0 8px 32px rgba(52, 152, 219, 0.2);
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+        
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 48px rgba(52, 152, 219, 0.3);
+          border-color: rgba(52, 152, 219, 0.5);
+        }
+        
+        .project-control-component {
+          display: block;
+        }
+      }
+
+      .plan-section {
+        flex: 1;
+        background: rgba(230, 126, 34, 0.1);
+        border-radius: 12px;
+        border: 1px solid rgba(230, 126, 34, 0.3);
+        padding: 16px;
+        box-shadow: 0 8px 32px rgba(230, 126, 34, 0.2);
+        backdrop-filter: blur(10px);
+        min-height: 300px;
+        transition: all 0.3s ease;
+        
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 48px rgba(230, 126, 34, 0.3);
+          border-color: rgba(230, 126, 34, 0.5);
+        }
+        
+        .plan-widget-component {
+          height: 100%;
+          display: block;
+        }
+      }
+    }
+
+    // Panel derecho mejorado
+    .right-panel {
+      width: 65%;
+      background: linear-gradient(180deg, #1e1e1e, #1a1a1a);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      
+      .log-section {
+        flex: 1;
+        padding: 20px;
+        overflow: hidden;
+        background: rgba(39, 174, 96, 0.1);
+        border-radius: 12px;
+        margin: 20px;
+        border: 1px solid rgba(39, 174, 96, 0.3);
+        box-shadow: 0 8px 32px rgba(39, 174, 96, 0.2);
+        backdrop-filter: blur(10px);
+        position: relative;
+        transition: all 0.3s ease;
+        
+        &:hover {
+          border-color: rgba(39, 174, 96, 0.5);
+          box-shadow: 0 12px 48px rgba(39, 174, 96, 0.3);
+        }
+        
+        // Efecto de resplandor en la esquina
+        &::before {
+          content: '';
+          position: absolute;
+          top: -2px;
+          right: -2px;
+          width: 20px;
+          height: 20px;
+          background: radial-gradient(circle, #27ae60, transparent);
+          border-radius: 50%;
+          animation: cornerGlow 2s infinite alternate;
+        }
+        
+        .live-event-log-component {
+          height: 100%;
+          display: block;
+        }
+      }
+    }
+  }
+
+  // ===============================
+  // STATUSFOOTER AVANZADO
+  // ===============================
+  .status-footer-section {
+    flex-shrink: 0;
+    z-index: 100;
+  }
+}
+
+// ===============================
+// INDICADORES FLOTANTES
+// ===============================
+.floating-indicators {
+  position: fixed;
+  top: 50%;
+  right: 24px;
+  transform: translateY(-50%);
+  z-index: 999;
+  
+  .analysis-indicator {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    color: white;
+    padding: 16px 20px;
+    border-radius: 30px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 8px 32px rgba(243, 156, 18, 0.4);
+    animation: floatIndicator 3s infinite ease-in-out;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    
+    mat-icon {
+      font-size: 24px;
+      
+      &.spinning {
+        animation: spin 2s linear infinite;
+      }
+    }
+    
+    span {
+      font-weight: 500;
+      font-size: 14px;
+    }
+  }
+}
+
+// ===============================
+// EFECTOS VISUALES AVANZADOS
+// ===============================
+
+// Partículas de fondo animadas
+.monitoring-dashboard-advanced::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(circle at 20% 30%, rgba(52, 152, 219, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(39, 174, 96, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 80%, rgba(230, 126, 34, 0.1) 0%, transparent 50%);
+  animation: particleFloat 20s infinite linear;
+  pointer-events: none;
+  z-index: 1;
+}
+
+// Grid de fondo sutil
+.monitoring-dashboard-advanced::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+// ===============================
+// ANIMACIONES
+// ===============================
+@keyframes slideDown {
+  0% {
+    transform: translate(-50%, -100px);
+    opacity: 0;
+  }
+  100% {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-10px);
+  }
+  60% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes borderGlow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(52, 152, 219, 0.8);
+  }
+}
+
+@keyframes cornerGlow {
+  0% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0.7;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes floatIndicator {
+  0%, 100% {
+    transform: translateY(-50%) translateX(0);
+  }
+  50% {
+    transform: translateY(-50%) translateX(-10px);
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes particleFloat {
+  0% {
+    transform: translateX(0) translateY(0) rotate(0deg);
+  }
+  33% {
+    transform: translateX(-30px) translateY(-30px) rotate(120deg);
+  }
+  66% {
+    transform: translateX(30px) translateY(30px) rotate(240deg);
+  }
+  100% {
+    transform: translateX(0) translateY(0) rotate(360deg);
+  }
+}
+
+// ===============================
+// SCROLLBARS PERSONALIZADOS
+// ===============================
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #2c2c2c;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #3498db, #2980b9);
+  border-radius: 5px;
+  border: 1px solid #2c2c2c;
+  
+  &:hover {
+    background: linear-gradient(180deg, #5dade2, #3498db);
+  }
+}
+
+// ===============================
+// RESPONSIVE DESIGN AVANZADO
+// ===============================
+@media (max-width: 1600px) {
+  .monitoring-dashboard-advanced {
+    .main-content {
+      .left-panel {
+        min-width: 380px;
+        
+        .control-section,
+        .plan-section {
+          padding: 12px;
+        }
+      }
+      
+      .right-panel {
+        .log-section {
+          margin: 16px;
+          padding: 16px;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 1400px) {
+  .monitoring-dashboard-advanced {
+    .main-content {
+      .left-panel {
+        width: 40%;
+        min-width: 350px;
+      }
+      
+      .right-panel {
+        width: 60%;
+      }
+    }
+    
+    .welcome-banner {
+      .welcome-content {
+        .welcome-text {
+          font-size: 12px;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 1200px) {
+  .monitoring-dashboard-advanced {
+    .main-content {
+      flex-direction: column;
+      
+      .left-panel,
+      .right-panel {
+        width: 100%;
+        min-width: unset;
+      }
+      
+      .left-panel {
+        height: 40%;
+        border-right: none;
+        border-bottom: 3px solid #3498db;
+        
+        &::after {
+          top: unset;
+          bottom: 0;
+          width: 100%;
+          height: 3px;
+          background: linear-gradient(90deg, #3498db, #2980b9, #3498db);
+        }
+        
+        flex-direction: row;
+        gap: 16px;
+        
+        .control-section {
+          flex: 0 0 300px;
+        }
+        
+        .plan-section {
+          flex: 1;
+        }
+      }
+      
+      .right-panel {
+        height: 60%;
+      }
+    }
+    
+    .floating-indicators {
+      bottom: 80px;
+      right: 16px;
+      top: unset;
+      transform: none;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .monitoring-dashboard-advanced {
+    .main-content {
+      .left-panel {
+        flex-direction: column;
+        height: 35%;
+        padding: 12px;
+        gap: 12px;
+        
+        .control-section {
+          flex: 0 0 auto;
+        }
+        
+        .plan-section {
+          flex: 1;
+          min-height: 200px;
+        }
+      }
+      
+      .right-panel {
+        height: 65%;
+        
+        .log-section {
+          margin: 12px;
+          padding: 12px;
+        }
+      }
+    }
+    
+    .welcome-banner {
+      left: 16px;
+      right: 16px;
+      transform: none;
+      
+      .welcome-content {
+        .welcome-text {
+          font-size: 11px;
+        }
+      }
+    }
+  }
+}
+
+// ===============================
+// MODO ALTO CONTRASTE
+// ===============================
+@media (prefers-contrast: high) {
+  .monitoring-dashboard-advanced {
+    .main-content {
+      .left-panel {
+        border-right-color: #ffffff;
+        
+        .control-section {
+          border-color: #ffffff;
+        }
+        
+        .plan-section {
+          border-color: #ffffff;
+        }
+      }
+      
+      .right-panel {
+        .log-section {
+          border-color: #ffffff;
+        }
+      }
+    }
+  }
+}
+
+// ===============================
+// REDUCIR ANIMACIONES
+// ===============================
+@media (prefers-reduced-motion: reduce) {
+  .monitoring-dashboard-advanced::before,
+  .monitoring-dashboard-advanced::after,
+  .welcome-banner,
+  .floating-indicators .analysis-indicator,
+  .left-panel::after {
+    animation: none;
+  }
+  
+  .left-panel .control-section,
+  .left-panel .plan-section,
+  .right-panel .log-section {
+    transition: none;
+    
+    &:hover {
+      transform: none;
+    }
+  }
+}

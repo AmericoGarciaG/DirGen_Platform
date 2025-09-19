@@ -1,0 +1,557 @@
+// StatusFooter - Barra inferior con métricas del sistema y controles avanzados
+.status-footer {
+  position: relative;
+  background: linear-gradient(180deg, #2c3e50, #34495e) !important;
+  color: #ecf0f1 !important;
+  border-top: 2px solid #3498db;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  
+  &.expanded {
+    .expanded-panel {
+      max-height: 200px;
+      opacity: 1;
+    }
+    
+    .expand-toggle mat-icon.rotated {
+      transform: rotate(180deg);
+    }
+  }
+
+  // ===============================
+  // BARRA PRINCIPAL DEL FOOTER
+  // ===============================
+  .footer-toolbar {
+    background: transparent !important;
+    color: inherit !important;
+    min-height: 56px !important;
+    height: 56px !important;
+    padding: 0 16px !important;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  // ===============================
+  // SECCIÓN IZQUIERDA - MÉTRICAS
+  // ===============================
+  .left-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 0 0 auto;
+    
+    .metrics-toggle {
+      color: #3498db !important;
+      
+      &:hover {
+        background: rgba(52, 152, 219, 0.1) !important;
+      }
+    }
+    
+    .system-metrics {
+      display: flex;
+      gap: 16px;
+      
+      .metric-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        min-width: 90px;
+        
+        .metric-icon {
+          font-size: 16px;
+          width: 16px;
+          height: 16px;
+          
+          &.cpu-icon {
+            color: #e74c3c;
+          }
+          
+          &.memory-icon {
+            color: #9b59b6;
+          }
+          
+          &.network-icon {
+            color: #95a5a6;
+            transition: color 0.3s ease;
+            
+            &.active {
+              color: #27ae60;
+              animation: networkPulse 2s infinite;
+            }
+          }
+          
+          &.disk-icon {
+            color: #f39c12;
+          }
+        }
+        
+        .metric-info {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          
+          .metric-label {
+            font-size: 10px;
+            color: #95a5a6;
+            font-weight: 500;
+            text-transform: uppercase;
+          }
+          
+          .metric-progress {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            width: 60px;
+            
+            mat-progress-bar {
+              flex: 1;
+              height: 4px !important;
+              border-radius: 2px !important;
+              
+              ::ng-deep .mdc-linear-progress__bar-inner {
+                border-radius: 2px !important;
+              }
+            }
+          }
+          
+          .metric-value {
+            font-size: 11px;
+            font-weight: 600;
+            color: #ecf0f1;
+            font-family: 'Courier New', monospace;
+            
+            &.network-speed {
+              color: #27ae60;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // ===============================
+  // SECCIÓN CENTRAL - LOG RESUMIDO
+  // ===============================
+  .center-section {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    
+    .recent-log {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      max-width: 600px;
+      
+      .expand-toggle {
+        color: #3498db !important;
+        
+        mat-icon {
+          transition: transform 0.3s ease;
+        }
+      }
+      
+      .log-preview {
+        flex: 1;
+        
+        .log-title {
+          font-size: 12px;
+          color: #95a5a6;
+          font-weight: 500;
+          margin-right: 12px;
+        }
+        
+        .log-messages {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+          max-height: 24px;
+          overflow: hidden;
+          transition: all 0.3s ease;
+          
+          &.expanded {
+            max-height: 120px;
+            flex-direction: column;
+            gap: 4px;
+          }
+          
+          .log-message {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            font-size: 11px;
+            font-family: 'Courier New', monospace;
+            
+            .message-icon {
+              font-size: 14px !important;
+              width: 14px !important;
+              height: 14px !important;
+            }
+            
+            .message-time {
+              color: #95a5a6;
+              font-size: 10px;
+            }
+            
+            .message-content {
+              max-width: 200px;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+          }
+        }
+      }
+      
+      .full-log-btn {
+        color: #95a5a6 !important;
+        
+        &:hover {
+          color: #3498db !important;
+        }
+      }
+    }
+    
+    .no-messages {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #95a5a6;
+      font-size: 12px;
+      font-style: italic;
+      
+      mat-icon {
+        font-size: 16px;
+      }
+    }
+  }
+
+  // ===============================
+  // SECCIÓN DERECHA - CONTROLES
+  // ===============================
+  .right-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 0 0 auto;
+    
+    .quick-links {
+      display: flex;
+      gap: 4px;
+      
+      .quick-link-btn {
+        color: #95a5a6 !important;
+        transition: color 0.3s ease;
+        
+        &:hover {
+          color: #3498db !important;
+        }
+      }
+    }
+    
+    mat-divider {
+      height: 32px;
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    .advanced-controls {
+      display: flex;
+      gap: 8px;
+      
+      .control-btn {
+        font-size: 11px !important;
+        height: 32px !important;
+        min-width: auto !important;
+        padding: 0 12px !important;
+        
+        mat-icon {
+          font-size: 16px !important;
+          width: 16px !important;
+          height: 16px !important;
+          margin-right: 4px !important;
+        }
+        
+        &[disabled] {
+          opacity: 0.5;
+        }
+        
+        &[color="warn"] {
+          background: rgba(231, 76, 60, 0.1) !important;
+          color: #e74c3c !important;
+          border: 1px solid rgba(231, 76, 60, 0.3) !important;
+          
+          &:hover:not([disabled]) {
+            background: rgba(231, 76, 60, 0.2) !important;
+          }
+        }
+      }
+    }
+    
+    .menu-trigger {
+      color: #95a5a6 !important;
+      
+      &:hover {
+        color: #ecf0f1 !important;
+      }
+    }
+  }
+
+  // ===============================
+  // PANEL EXPANDIDO
+  // ===============================
+  .expanded-panel {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    background: rgba(0, 0, 0, 0.2);
+    
+    .expanded-content {
+      padding: 16px 24px;
+      display: flex;
+      gap: 32px;
+      
+      .system-info, .additional-actions {
+        flex: 1;
+        
+        h4 {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin: 0 0 12px 0;
+          font-size: 14px;
+          color: #3498db;
+          
+          mat-icon {
+            font-size: 18px;
+          }
+        }
+        
+        .info-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+          
+          .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            
+            .info-label {
+              font-size: 11px;
+              color: #95a5a6;
+              font-weight: 500;
+            }
+            
+            .info-value {
+              font-size: 11px;
+              color: #ecf0f1;
+              font-family: 'Courier New', monospace;
+            }
+            
+            .status-chip {
+              font-size: 10px !important;
+              height: 20px !important;
+              color: white !important;
+            }
+          }
+        }
+        
+        .action-buttons {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          
+          .action-btn {
+            font-size: 11px !important;
+            height: 32px !important;
+            color: #ecf0f1 !important;
+            border-color: rgba(255, 255, 255, 0.2) !important;
+            
+            mat-icon {
+              font-size: 16px !important;
+              width: 16px !important;
+              height: 16px !important;
+              margin-right: 6px !important;
+            }
+            
+            &:hover {
+              background: rgba(255, 255, 255, 0.1) !important;
+              border-color: rgba(255, 255, 255, 0.3) !important;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// ===============================
+// MENÚ CONTEXTUAL
+// ===============================
+::ng-deep .footer-menu {
+  .mat-mdc-menu-content {
+    background: #2c3e50 !important;
+    color: #ecf0f1 !important;
+    
+    .mat-mdc-menu-item {
+      color: #ecf0f1 !important;
+      
+      &:hover {
+        background: rgba(52, 152, 219, 0.1) !important;
+      }
+      
+      mat-icon {
+        color: #95a5a6;
+        margin-right: 8px;
+      }
+    }
+  }
+}
+
+// ===============================
+// ANIMACIONES
+// ===============================
+@keyframes networkPulse {
+  0%, 100% { 
+    color: #27ae60; 
+    transform: scale(1); 
+  }
+  50% { 
+    color: #2ecc71; 
+    transform: scale(1.1); 
+  }
+}
+
+// ===============================
+// RESPONSIVE DESIGN
+// ===============================
+@media (max-width: 1400px) {
+  .status-footer {
+    .left-section {
+      .system-metrics {
+        gap: 12px;
+        
+        .metric-item:nth-child(n+4) {
+          display: none; // Ocultar disco en pantallas medianas
+        }
+      }
+    }
+    
+    .right-section {
+      .advanced-controls {
+        gap: 6px;
+        
+        .control-btn span {
+          display: none; // Solo mostrar iconos
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 1200px) {
+  .status-footer {
+    .footer-toolbar {
+      padding: 0 12px !important;
+      gap: 12px;
+    }
+    
+    .left-section {
+      .system-metrics {
+        gap: 8px;
+        
+        .metric-item:nth-child(n+3) {
+          display: none; // Ocultar red y disco
+        }
+        
+        .metric-item {
+          min-width: 80px;
+        }
+      }
+    }
+    
+    .center-section {
+      .recent-log {
+        .log-preview {
+          .log-messages {
+            .log-message {
+              .message-content {
+                max-width: 150px;
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    .right-section {
+      .quick-links {
+        .quick-link-btn:nth-child(n+2) {
+          display: none; // Solo mostrar primer enlace
+        }
+      }
+      
+      .advanced-controls {
+        .control-btn:nth-child(n+3) {
+          display: none; // Ocultar botones menos importantes
+        }
+      }
+    }
+    
+    .expanded-panel {
+      .expanded-content {
+        flex-direction: column;
+        gap: 16px;
+        
+        .system-info .info-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .status-footer {
+    .footer-toolbar {
+      flex-wrap: wrap;
+      height: auto !important;
+      min-height: 48px !important;
+    }
+    
+    .left-section {
+      order: 2;
+      flex: 1;
+    }
+    
+    .center-section {
+      order: 1;
+      flex: 1 1 100%;
+      margin-bottom: 8px;
+    }
+    
+    .right-section {
+      order: 3;
+      gap: 8px;
+      
+      .advanced-controls {
+        .control-btn:not(:first-child) {
+          display: none;
+        }
+      }
+    }
+  }
+}
