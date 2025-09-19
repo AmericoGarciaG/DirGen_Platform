@@ -59,7 +59,6 @@ import { DirgenMessage, WebSocketState } from '../../shared/models/dirgen.models
           
           <!-- Plan Widget Section -->
           <app-plan-widget 
-            [webSocketState]="webSocketState"
             class="plan-widget-section">
           </app-plan-widget>
           

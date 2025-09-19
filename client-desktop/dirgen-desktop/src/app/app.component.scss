@@ -108,6 +108,19 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    
+    .workspace-section {
+      flex: 0 0 45%; // 45% de la altura del panel izquierdo
+      min-height: 300px;
+      border-bottom: 1px solid #404040;
+      overflow: hidden;
+    }
+    
+    .plan-section {
+      flex: 1; // El resto del espacio disponible
+      min-height: 400px;
+      overflow: hidden;
+    }
   }
   
   .right-panel {
@@ -191,6 +204,16 @@
       height: 50%;
       border-right: none;
       border-bottom: 1px solid #404040;
+      
+      .workspace-section {
+        flex: 0 0 40%;
+        min-height: 200px;
+      }
+      
+      .plan-section {
+        flex: 1;
+        min-height: 250px;
+      }
     }
     
     .right-panel {
@@ -204,24 +227,6 @@
   }
 }
 
-// Estilos temporales para los componentes inline
-.plan-placeholder {
-  padding: 24px;
-  color: #888;
-  text-align: center;
-  
-  h3 {
-    margin: 0 0 16px;
-    color: #e0e0e0;
-    font-size: 18px;
-  }
-  
-  p {
-    margin: 0;
-    font-size: 14px;
-    line-height: 1.5;
-  }
-}
 
 .events-wrapper {
   flex: 1;

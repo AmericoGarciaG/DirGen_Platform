@@ -1,3 +1,495 @@
+.plan-widget-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+  
+  // Loading State
+  .loading-state {
+    padding: 24px;
+    text-align: center;
+    color: #888;
+    
+    p {
+      margin: 16px 0 0;
+      font-size: 14px;
+    }
+  }
+  
+  // Error State
+  .error-state {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: rgba(244, 67, 54, 0.1);
+    border: 1px solid rgba(244, 67, 54, 0.3);
+    border-radius: 8px;
+    margin: 16px;
+    color: #f44336;
+    
+    p {
+      margin: 0;
+      font-size: 14px;
+    }
+  }
+  
+  // Plan Header
+  .plan-header {
+    padding: 16px;
+    border-bottom: 1px solid #404040;
+    background: #2d2d30;
+    
+    .plan-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      
+      .plan-icon {
+        color: #007acc;
+        font-size: 24px;
+      }
+      
+      h3 {
+        margin: 0;
+        color: #e0e0e0;
+        font-size: 20px;
+        font-weight: 600;
+        flex: 1;
+      }
+      
+      mat-chip {
+        font-size: 12px;
+        font-weight: 600;
+      }
+    }
+    
+    .plan-progress {
+      margin-bottom: 12px;
+      
+      .progress-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        
+        .progress-text {
+          color: #bbb;
+          font-size: 14px;
+        }
+        
+        .progress-percentage {
+          color: #007acc;
+          font-weight: 600;
+          font-size: 14px;
+        }
+      }
+      
+      mat-progress-bar {
+        height: 6px;
+        border-radius: 3px;
+      }
+    }
+    
+    .plan-actions {
+      display: flex;
+      gap: 4px;
+      
+      button {
+        color: #888;
+        
+        &:hover {
+          color: #007acc;
+        }
+      }
+    }
+  }
+  
+  // Tasks Container
+  .tasks-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    
+    .task-accordion {
+      ::ng-deep {
+        // Accordion Panel Styling
+        .mat-expansion-panel {
+          background: #2d2d30;
+          border: 1px solid #404040;
+          border-radius: 8px;
+          margin-bottom: 12px;
+          overflow: hidden;
+          transition: all 0.3s ease;
+          
+          &:hover {
+            border-color: #505050;
+            transform: translateX(2px);
+          }
+          
+          // Status-based styling
+          &.task-pending {
+            border-left: 4px solid #666;
+          }
+          
+          &.task-in_progress {
+            border-left: 4px solid #007acc;
+            box-shadow: 0 0 8px rgba(0, 122, 204, 0.2);
+          }
+          
+          &.task-completed {
+            border-left: 4px solid #4caf50;
+            background: rgba(76, 175, 80, 0.05);
+          }
+          
+          &.task-failed {
+            border-left: 4px solid #f44336;
+            background: rgba(244, 67, 54, 0.05);
+          }
+          
+          &.task-blocked {
+            border-left: 4px solid #ff9800;
+            background: rgba(255, 152, 0, 0.05);
+            opacity: 0.7;
+          }
+          
+          // Panel Header
+          .mat-expansion-panel-header {
+            padding: 16px 20px;
+            min-height: 64px;
+            
+            &.mat-expanded {
+              min-height: 64px;
+            }
+            
+            .mat-expansion-panel-header-title {
+              .task-header {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                width: 100%;
+                
+                .status-icon {
+                  font-size: 20px;
+                }
+                
+                .task-number {
+                  color: #888;
+                  font-weight: 600;
+                  min-width: 24px;
+                }
+                
+                .task-title {
+                  color: #e0e0e0;
+                  font-weight: 600;
+                  flex: 1;
+                  font-size: 16px;
+                }
+                
+                .task-badges {
+                  display: flex;
+                  gap: 8px;
+                  
+                  .status-chip,
+                  .agent-chip {
+                    font-size: 11px;
+                    min-height: 24px;
+                    font-weight: 600;
+                  }
+                }
+              }
+            }
+          }
+          
+          // Panel Body
+          .mat-expansion-panel-content {
+            .mat-expansion-panel-body {
+              padding: 0 20px 20px;
+              
+              .task-content {
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+                
+                .task-section {
+                  h4 {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    margin: 0 0 8px;
+                    color: #007acc;
+                    font-size: 14px;
+                    font-weight: 600;
+                    
+                    mat-icon {
+                      font-size: 18px;
+                      width: 18px;
+                      height: 18px;
+                    }
+                  }
+                  
+                  .task-description,
+                  .task-justification {
+                    margin: 0;
+                    color: #bbb;
+                    font-size: 14px;
+                    line-height: 1.5;
+                    padding: 12px;
+                    background: rgba(255, 255, 255, 0.02);
+                    border-radius: 6px;
+                    border-left: 3px solid #007acc;
+                  }
+                  
+                  .task-justification {
+                    border-left-color: #ff9800;
+                    font-style: italic;
+                  }
+                  
+                  .artifacts-list {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 8px;
+                    
+                    mat-chip {
+                      font-size: 12px;
+                      font-weight: 500;
+                      
+                      mat-icon {
+                        font-size: 16px;
+                      }
+                    }
+                  }
+                  
+                  &.task-timeline {
+                    .timeline-grid {
+                      display: grid;
+                      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                      gap: 12px;
+                      
+                      .timeline-item {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 4px;
+                        padding: 8px 12px;
+                        background: rgba(255, 255, 255, 0.02);
+                        border-radius: 6px;
+                        border: 1px solid #404040;
+                        
+                        .timeline-label {
+                          color: #888;
+                          font-size: 12px;
+                          font-weight: 500;
+                        }
+                        
+                        .timeline-value {
+                          color: #e0e0e0;
+                          font-size: 13px;
+                          font-weight: 600;
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  // Empty State
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    text-align: center;
+    color: #666;
+    
+    .empty-icon {
+      font-size: 64px;
+      width: 64px;
+      height: 64px;
+      margin-bottom: 24px;
+      opacity: 0.5;
+    }
+    
+    h4 {
+      margin: 0 0 12px;
+      color: #888;
+      font-weight: 600;
+      font-size: 18px;
+    }
+    
+    p {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.5;
+      max-width: 400px;
+    }
+  }
+}
+
+// Scrollbar styling
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 3px;
+  
+  &:hover {
+    background: #505050;
+  }
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+  .plan-widget-container {
+    .plan-header {
+      padding: 12px;
+      
+      .plan-title {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        
+        h3 {
+          font-size: 18px;
+        }
+        
+        mat-chip {
+          align-self: flex-start;
+        }
+      }
+      
+      .plan-progress {
+        .progress-info {
+          .progress-text,
+          .progress-percentage {
+            font-size: 13px;
+          }
+        }
+      }
+    }
+    
+    .tasks-container {
+      padding: 12px;
+      
+      .task-accordion {
+        ::ng-deep {
+          .mat-expansion-panel {
+            .mat-expansion-panel-header {
+              padding: 12px 16px;
+              min-height: 56px;
+              
+              .task-header {
+                gap: 8px;
+                
+                .task-title {
+                  font-size: 14px;
+                }
+                
+                .task-badges {
+                  flex-direction: column;
+                  gap: 4px;
+                  
+                  .status-chip,
+                  .agent-chip {
+                    font-size: 10px;
+                    min-height: 20px;
+                  }
+                }
+              }
+            }
+            
+            .mat-expansion-panel-content {
+              .mat-expansion-panel-body {
+                padding: 0 16px 16px;
+                
+                .task-content {
+                  gap: 12px;
+                  
+                  .task-section {
+                    h4 {
+                      font-size: 13px;
+                      
+                      mat-icon {
+                        font-size: 16px;
+                        width: 16px;
+                        height: 16px;
+                      }
+                    }
+                    
+                    .task-description,
+                    .task-justification {
+                      font-size: 13px;
+                      padding: 8px;
+                    }
+                    
+                    .artifacts-list {
+                      gap: 4px;
+                      
+                      mat-chip {
+                        font-size: 11px;
+                      }
+                    }
+                    
+                    &.task-timeline {
+                      .timeline-grid {
+                        grid-template-columns: 1fr;
+                        gap: 8px;
+                        
+                        .timeline-item {
+                          padding: 6px 8px;
+                          
+                          .timeline-label {
+                            font-size: 11px;
+                          }
+                          
+                          .timeline-value {
+                            font-size: 12px;
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    .empty-state {
+      height: 200px;
+      
+      .empty-icon {
+        font-size: 48px;
+        width: 48px;
+        height: 48px;
+      }
+      
+      h4 {
+        font-size: 16px;
+      }
+      
+      p {
+        font-size: 13px;
+      }
+    }
+  }
+}
+
 .plan-card {
   background: #333 !important;
   color: #e0e0e0 !important;

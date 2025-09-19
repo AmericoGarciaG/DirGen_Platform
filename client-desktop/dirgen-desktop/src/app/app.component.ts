@@ -2,15 +2,28 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { Subscription } from 'rxjs';
+import { Store } from '@ngrx/store';
 
 // Services
 import { ApiService } from './core/services/api.service';
 import { WebSocketState } from './shared/models/dirgen.models';
 
+// Components
+import { WorkspaceComponent } from './features/workspace/workspace.component';
+import { PlanWidgetComponent } from './features/monitoring/components/plan-widget/plan-widget.component';
+
+// Store
+import { AppState } from './store/models';
+
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet],
+  imports: [
+    CommonModule, 
+    RouterOutlet,
+    WorkspaceComponent,
+    PlanWidgetComponent
+  ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })
@@ -25,7 +38,10 @@ export class AppComponent implements OnInit, OnDestroy {
   
   private subscriptions: Subscription[] = [];
   
-  constructor(private apiService: ApiService) {}
+  constructor(
+    private apiService: ApiService,
+    private store: Store<AppState>
+  ) {}
   
   ngOnInit(): void {
     // Escuchar el estado del WebSocket para toda la aplicación

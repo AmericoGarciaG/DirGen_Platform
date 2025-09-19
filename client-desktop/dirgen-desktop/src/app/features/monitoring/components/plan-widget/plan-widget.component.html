@@ -1,20 +1,185 @@
-<mat-card class="plan-card">
-  <mat-card-header>
-    <mat-card-title>
-      <mat-icon>checklist</mat-icon>
-      Plan de Ejecución
-    </mat-card-title>
-  </mat-card-header>
-  <mat-card-content>
-    <div *ngIf="!webSocketState || !webSocketState.messages || !webSocketState.messages.length; else planDetected" class="no-plan">
-      <mat-icon>pending_actions</mat-icon>
-      <p>Esperando plan...</p>
-    </div>
-    <ng-template #planDetected>
-      <div class="plan-placeholder">
-        <p>📋 Plan detectado (en desarrollo)</p>
-        <small>Mensajes: {{ webSocketState.messages.length || 0 }}</small>
+<!-- Plan Widget - Interactive Execution Plan -->
+<div class="plan-widget-container">
+  
+  <!-- Loading State -->
+  <div *ngIf="loading$ | async" class="loading-state">
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+    <p>Cargando plan de ejecución...</p>
+  </div>
+  
+  <!-- Error State -->
+  <div *ngIf="error$ | async as error" class="error-state">
+    <mat-icon color="warn">error</mat-icon>
+    <p>{{ error }}</p>
+  </div>
+  
+  <!-- Plan Content -->
+  <ng-container *ngIf="currentPlan$ | async as plan">
+    
+    <!-- Plan Header -->
+    <div class="plan-header">
+      <div class="plan-title">
+        <mat-icon class="plan-icon">assignment</mat-icon>
+        <h3>{{ plan.title }}</h3>
+        <mat-chip [color]="plan.status === 'approved' ? 'primary' : plan.status === 'executing' ? 'accent' : ''">
+          {{ plan.status === 'draft' ? 'Borrador' : 
+             plan.status === 'approved' ? 'Aprobado' :
+             plan.status === 'executing' ? 'Ejecutando' :
+             plan.status === 'completed' ? 'Completado' :
+             plan.status === 'failed' ? 'Fallido' : plan.status }}
+        </mat-chip>
       </div>
-    </ng-template>
-  </mat-card-content>
-</mat-card>
+      
+      <!-- Progress Bar -->
+      <div class="plan-progress" *ngIf="planProgress$ | async as progress">
+        <div class="progress-info">
+          <span class="progress-text">{{ progress.completed }} de {{ progress.total }} tareas</span>
+          <span class="progress-percentage">{{ progress.percentage }}%</span>
+        </div>
+        <mat-progress-bar 
+          mode="determinate" 
+          [value]="progress.percentage"
+          [color]="progress.percentage === 100 ? 'accent' : 'primary'">
+        </mat-progress-bar>
+      </div>
+      
+      <!-- Action Buttons -->
+      <div class="plan-actions">
+        <button 
+          mat-icon-button 
+          (click)="expandAllTasks()"
+          matTooltip="Expandir todas las tareas">
+          <mat-icon>expand_more</mat-icon>
+        </button>
+        <button 
+          mat-icon-button 
+          (click)="collapseAllTasks()"
+          matTooltip="Colapsar todas las tareas">
+          <mat-icon>expand_less</mat-icon>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Tasks Accordion -->
+    <div class="tasks-container">
+      <ng-container *ngIf="planTasks$ | async as tasks">
+        <mat-accordion multi="true" class="task-accordion">
+          
+          <mat-expansion-panel 
+            *ngFor="let task of tasks; trackBy: trackByTaskId"
+            [expanded]="isTaskExpanded(task.id, (expandedTaskIds$ | async) || [])"
+            (opened)="onTaskToggle(task.id)"
+            (closed)="onTaskToggle(task.id)"
+            [class]="'task-panel task-' + task.status"
+            [disabled]="task.status === 'blocked'">
+            
+            <!-- Panel Header -->
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                <div class="task-header">
+                  <mat-icon 
+                    [color]="getStatusColor(task.status)"
+                    class="status-icon">
+                    {{ getStatusIcon(task.status) }}
+                  </mat-icon>
+                  <span class="task-number">{{ task.order }}.</span>
+                  <span class="task-title">{{ task.title }}</span>
+                  
+                  <div class="task-badges">
+                    <!-- Status Badge -->
+                    <mat-chip 
+                      [color]="getStatusColor(task.status)"
+                      class="status-chip">
+                      {{ getStatusText(task.status) }}
+                    </mat-chip>
+                    
+                    <!-- Agent Badge -->
+                    <mat-chip 
+                      *ngIf="task.assignedAgent"
+                      color="accent"
+                      class="agent-chip">
+                      {{ getAgentDisplayName(task.assignedAgent) }}
+                    </mat-chip>
+                  </div>
+                </div>
+              </mat-panel-title>
+            </mat-expansion-panel-header>
+            
+            <!-- Panel Content -->
+            <div class="task-content">
+              
+              <!-- Task Description -->
+              <div class="task-section" *ngIf="task.description">
+                <h4><mat-icon>description</mat-icon> Descripción</h4>
+                <p class="task-description">{{ task.description }}</p>
+              </div>
+              
+              <!-- Justification -->
+              <div class="task-section" *ngIf="task.justification">
+                <h4><mat-icon>lightbulb</mat-icon> Justificación</h4>
+                <p class="task-justification">{{ task.justification }}</p>
+              </div>
+              
+              <!-- Expected Artifacts -->
+              <div class="task-section" *ngIf="task.expectedArtifacts.length > 0">
+                <h4><mat-icon>folder_special</mat-icon> Artefactos Esperados</h4>
+                <mat-chip-set class="artifacts-list">
+                  <mat-chip *ngFor="let artifact of task.expectedArtifacts" color="primary">
+                    <mat-icon matChipAvatar>draft</mat-icon>
+                    {{ artifact }}
+                  </mat-chip>
+                </mat-chip-set>
+              </div>
+              
+              <!-- Actual Artifacts -->
+              <div class="task-section" *ngIf="task.actualArtifacts.length > 0">
+                <h4><mat-icon>check_circle</mat-icon> Artefactos Generados</h4>
+                <mat-chip-set class="artifacts-list">
+                  <mat-chip *ngFor="let artifact of task.actualArtifacts" color="accent">
+                    <mat-icon matChipAvatar>done</mat-icon>
+                    {{ artifact }}
+                  </mat-chip>
+                </mat-chip-set>
+              </div>
+              
+              <!-- Timeline Info -->
+              <div class="task-section task-timeline" *ngIf="task.startedAt || task.completedAt || task.estimatedDuration">
+                <h4><mat-icon>schedule</mat-icon> Timeline</h4>
+                <div class="timeline-grid">
+                  <div class="timeline-item" *ngIf="task.startedAt">
+                    <span class="timeline-label">Iniciado:</span>
+                    <span class="timeline-value">{{ formatTimestamp(task.startedAt) }}</span>
+                  </div>
+                  <div class="timeline-item" *ngIf="task.completedAt">
+                    <span class="timeline-label">Completado:</span>
+                    <span class="timeline-value">{{ formatTimestamp(task.completedAt) }}</span>
+                  </div>
+                  <div class="timeline-item" *ngIf="task.estimatedDuration">
+                    <span class="timeline-label">Estimado:</span>
+                    <span class="timeline-value">{{ formatDuration(task.estimatedDuration) }}</span>
+                  </div>
+                  <div class="timeline-item" *ngIf="task.actualDuration">
+                    <span class="timeline-label">Duración real:</span>
+                    <span class="timeline-value">{{ formatDuration(task.actualDuration) }}</span>
+                  </div>
+                </div>
+              </div>
+              
+            </div>
+            
+          </mat-expansion-panel>
+          
+        </mat-accordion>
+      </ng-container>
+    </div>
+    
+  </ng-container>
+  
+  <!-- Empty State -->
+  <div *ngIf="!(currentPlan$ | async) && !(loading$ | async) && !(error$ | async)" class="empty-state">
+    <mat-icon class="empty-icon">assignment</mat-icon>
+    <h4>No hay plan de ejecución</h4>
+    <p>El plan aparecerá aquí una vez que el agente planificador genere la estrategia</p>
+  </div>
+  
+</div>

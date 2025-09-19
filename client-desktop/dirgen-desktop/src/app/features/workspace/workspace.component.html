@@ -1,0 +1,180 @@
+<!-- Workspace Component - Contexto y Entregables -->
+<div class="workspace-container">
+  
+  <!-- Loading Bar -->
+  <mat-progress-bar 
+    *ngIf="loading$ | async" 
+    mode="indeterminate" 
+    class="loading-bar">
+  </mat-progress-bar>
+  
+  <!-- Error Message -->
+  <div *ngIf="error$ | async as error" class="error-message">
+    <mat-icon color="warn">error</mat-icon>
+    <span>{{ error }}</span>
+  </div>
+  
+  <!-- Tabs Container -->
+  <mat-tab-group 
+    [selectedIndex]="selectedTabIndex$ | async"
+    (selectedTabChange)="onTabChange($event.index)"
+    class="workspace-tabs"
+    animationDuration="300ms">
+    
+    <!-- Context Tab -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <div class="tab-label">
+          <mat-icon>folder</mat-icon>
+          <span matBadge="{{ (workspaceSummary$ | async)?.contextFilesCount || 0 }}"
+                matBadgeHidden="{{ (workspaceSummary$ | async)?.contextFilesCount === 0 }}"
+                matBadgeColor="primary"
+                matBadgeSize="small">
+            Contexto
+          </span>
+        </div>
+      </ng-template>
+      
+      <!-- Context Files Content -->
+      <div class="tab-content context-content">
+        <div class="section-header">
+          <h3>
+            <mat-icon>upload_file</mat-icon>
+            Archivos de Contexto
+          </h3>
+          <p class="section-description">
+            Archivos que has subido para iniciar el proceso de desarrollo
+          </p>
+        </div>
+        
+        <div class="files-list">
+          <ng-container *ngIf="contextFiles$ | async as contextFiles">
+            
+            <!-- Files List -->
+            <mat-list *ngIf="contextFiles.length > 0; else noContextFiles">
+              <mat-list-item 
+                *ngFor="let file of contextFiles; trackBy: trackByFileId"
+                class="file-item">
+                
+                <mat-icon matListItemIcon [class]="'file-icon ' + getFileTypeColor(file.type)">
+                  {{ getFileIcon(file.name) }}
+                </mat-icon>
+                
+                <div matListItemTitle class="file-details">
+                  <div class="file-name">{{ file.name }}</div>
+                  <div class="file-meta">
+                    <mat-chip 
+                      [color]="getFileTypeColor(file.type)"
+                      class="file-type-chip">
+                      {{ file.type.toUpperCase() }}
+                    </mat-chip>
+                    <span class="file-size">{{ formatFileSize(file.size) }}</span>
+                    <span class="file-date">{{ formatTimestamp(file.uploadedAt) }}</span>
+                  </div>
+                </div>
+                
+                <button 
+                  mat-icon-button 
+                  matListItemMeta
+                  (click)="removeContextFile(file.id)"
+                  matTooltip="Eliminar archivo">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </mat-list-item>
+            </mat-list>
+            
+            <!-- Empty State -->
+            <ng-template #noContextFiles>
+              <div class="empty-state">
+                <mat-icon class="empty-icon">folder_open</mat-icon>
+                <h4>No hay archivos de contexto</h4>
+                <p>Los archivos que subas desde el Centro de Mando aparecerán aquí</p>
+              </div>
+            </ng-template>
+            
+          </ng-container>
+        </div>
+      </div>
+    </mat-tab>
+    
+    <!-- Deliverables Tab -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <div class="tab-label">
+          <mat-icon>build</mat-icon>
+          <span matBadge="{{ (workspaceSummary$ | async)?.deliverablesCount || 0 }}"
+                matBadgeHidden="{{ (workspaceSummary$ | async)?.deliverablesCount === 0 }}"
+                matBadgeColor="accent"
+                matBadgeSize="small">
+            Entregables
+          </span>
+        </div>
+      </ng-template>
+      
+      <!-- Deliverables Content -->
+      <div class="tab-content deliverables-content">
+        <div class="section-header">
+          <h3>
+            <mat-icon>inventory</mat-icon>
+            Archivos Generados
+          </h3>
+          <p class="section-description">
+            Archivos creados por los agentes durante el proceso de desarrollo
+          </p>
+        </div>
+        
+        <div class="files-list">
+          <ng-container *ngIf="deliverables$ | async as deliverables">
+            
+            <!-- Deliverables List -->
+            <mat-list *ngIf="deliverables.length > 0; else noDeliverables">
+              <mat-list-item 
+                *ngFor="let deliverable of deliverables; trackBy: trackByFileId"
+                class="file-item deliverable-item">
+                
+                <mat-icon matListItemIcon [class]="'file-icon ' + getAgentColor(deliverable.createdBy)">
+                  {{ getFileIcon(deliverable.name) }}
+                </mat-icon>
+                
+                <div matListItemTitle class="file-details">
+                  <div class="file-name">{{ deliverable.path }}</div>
+                  <div class="file-description" *ngIf="deliverable.description">
+                    {{ deliverable.description }}
+                  </div>
+                  <div class="file-meta">
+                    <mat-chip 
+                      [color]="getAgentColor(deliverable.createdBy)"
+                      class="agent-chip">
+                      {{ getAgentDisplayName(deliverable.createdBy) }}
+                    </mat-chip>
+                    <span class="file-type">{{ deliverable.type.toUpperCase() }}</span>
+                    <span class="file-date">{{ formatTimestamp(deliverable.createdAt) }}</span>
+                  </div>
+                </div>
+                
+                <button 
+                  mat-icon-button 
+                  matListItemMeta
+                  matTooltip="Ver archivo">
+                  <mat-icon>visibility</mat-icon>
+                </button>
+              </mat-list-item>
+            </mat-list>
+            
+            <!-- Empty State -->
+            <ng-template #noDeliverables>
+              <div class="empty-state">
+                <mat-icon class="empty-icon">build_circle</mat-icon>
+                <h4>No hay entregables aún</h4>
+                <p>Los archivos generados por los agentes aparecerán aquí</p>
+              </div>
+            </ng-template>
+            
+          </ng-container>
+        </div>
+      </div>
+    </mat-tab>
+    
+  </mat-tab-group>
+  
+</div>

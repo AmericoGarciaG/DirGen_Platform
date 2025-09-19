@@ -34,13 +34,19 @@
   <!-- Main Layout -->
   <div class="main-layout">
     
-    <!-- Left Panel - Plan & Deliverables -->
+    <!-- Left Panel - Workspace & Plan -->
     <div class="left-panel">
-      <!-- Aquí iría el PlanWidget, pero por simplicidad lo pondremos como contenido directo -->
-      <div class="plan-placeholder">
-        <h3>📁 Plan de Ejecución</h3>
-        <p>El plan aparecerá aquí una vez que el agente planificador termine su trabajo.</p>
+      
+      <!-- Workspace Section (Top) -->
+      <div class="workspace-section">
+        <app-workspace></app-workspace>
       </div>
+      
+      <!-- Plan Section (Bottom) -->
+      <div class="plan-section">
+        <app-plan-widget></app-plan-widget>
+      </div>
+      
     </div>
     
     <!-- Right Panel - Events & Command Center -->
@@ -50,12 +56,8 @@
         <div class="events-wrapper">
           <h3>📜 Log de Eventos</h3>
           <div class="events-log">
-            <div *ngFor="let msg of webSocketState.messages; trackBy: trackMessage" class="event-item">
-              <span class="event-time">{{ formatTime(msg.timestamp) }}</span>
-              <span class="event-source">{{ msg.source || 'Sistema' }}</span>
-              <span class="event-message">{{ msg.message || msg.type }}</span>
-            </div>
-            <div *ngIf="webSocketState.messages.length === 0" class="no-events">
+            <!-- TODO: Conectar con NgRx store para mostrar eventos -->
+            <div class="no-events">
               Esperando eventos...
             </div>
           </div>
