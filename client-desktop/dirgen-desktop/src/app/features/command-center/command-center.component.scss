@@ -125,18 +125,31 @@
 .input-container {
   padding: 16px;
   background: #1a1a1a;
+  overflow: hidden; // Avoid horizontal overflow
   
   .prompt-input {
     width: 100%; // FIXED: Full width
+    display: block;
     
     ::ng-deep {
       .mat-mdc-form-field {
         width: 100%; // FIXED: Ensure form field takes full width
         
+        .mdc-text-field {
+          width: 100%; // Ensure MDC root element fits container
+          box-sizing: border-box;
+        }
+        
+        .mat-mdc-form-field-flex {
+          width: 100%;
+          min-width: 0; // Allow shrinking to container width
+        }
+        
         .mat-mdc-text-field-wrapper {
           width: 100%; // FIXED: Wrapper takes full width
           background: #2d2d30;
           border-radius: 8px;
+          box-sizing: border-box;
           
           .mat-mdc-form-field-outline {
             color: #404040;
@@ -151,11 +164,15 @@
           // FIXED: Input field styling
           .mat-mdc-form-field-infix {
             width: 100%;
+            min-width: 0; // Critical to prevent overflow
             min-height: 48px;
             padding: 8px 0;
+            box-sizing: border-box;
             
-            input {
+            input,
+            .mat-mdc-input-element {
               width: 100%;
+              min-width: 0; // Allow input to shrink inside flex
               color: #e0e0e0;
               font-size: 14px;
               
@@ -175,6 +192,7 @@
           display: flex;
           align-items: center;
           gap: 4px;
+          flex-shrink: 0; // Prevent suffix from shrinking content width
         }
       }
       
