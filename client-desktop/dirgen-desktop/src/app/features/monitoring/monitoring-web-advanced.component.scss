@@ -193,11 +193,81 @@
         min-height: 120px;
         max-height: 200px;
         padding: 0 20px 20px 20px;
+        overflow: hidden; // CRITICAL: Prevent horizontal overflow
         
         app-command-center {
           display: block;
           width: 100%;
           height: 100%;
+          overflow: hidden; // Ensure the component itself doesn't overflow
+          box-sizing: border-box;
+        }
+
+        // Additional styles to ensure proper width calculation
+        ::ng-deep {
+          .command-center {
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
+          }
+
+          .input-container {
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
+            
+            .prompt-input {
+              width: 100%;
+              max-width: 100%;
+              
+              .mat-mdc-form-field {
+                width: 100%;
+                max-width: 100%;
+                
+                .mdc-text-field,
+                .mat-mdc-form-field-flex {
+                  width: 100%;
+                  max-width: 100%;
+                  min-width: 0; // Critical for preventing overflow
+                }
+                
+                .mat-mdc-form-field-infix {
+                  width: 100%;
+                  min-width: 0; // Critical for flex shrinking
+                  
+                  input {
+                    width: 100%;
+                    min-width: 0;
+                  }
+                }
+              }
+            }
+          }
+
+          // Chips styling to prevent overflow
+          .attached-files {
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
+            
+            mat-chip-set {
+              max-width: 100%;
+              
+              mat-chip {
+                max-width: 100%;
+                
+                .mat-mdc-chip-action-label {
+                  max-width: 200px;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  white-space: nowrap;
+                }
+              }
+            }
+          }
         }
       }
     }
