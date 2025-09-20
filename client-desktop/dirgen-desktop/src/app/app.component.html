@@ -1,8 +1,8 @@
 <!-- DirGen Conversational IDE -->
-<div class="dirgen-ide">
-  
-  <!-- SDLC Progress Bar -->
-  <div class="sdlc-progress-bar">
+<div class="dirgen-grid-layout">
+
+  <!-- Barra de Etapas del SDLC -->
+  <div class="area-stepper">
     <div class="progress-stages">
       <div class="stage active">
         <div class="stage-icon">📋</div>
@@ -30,42 +30,22 @@
       </div>
     </div>
   </div>
-  
-  <!-- Main Layout -->
-  <div class="main-layout">
-    
-    <!-- Left Panel - Workspace & Plan -->
-    <div class="left-panel">
-      
-      <!-- Workspace Section (Top) -->
-      <div class="workspace-section">
-        <app-workspace></app-workspace>
-      </div>
-      
-      <!-- Plan Section (Bottom) -->
-      <div class="plan-section">
-        <app-plan-widget></app-plan-widget>
-      </div>
-      
-    </div>
-    
-    <!-- Right Panel - Events & Command Center -->
-    <div class="right-panel">
-      <div class="events-container">
-        <!-- Log de Eventos -->
-        <div class="events-wrapper">
-          <app-event-log></app-event-log>
-        </div>
-      </div>
-      <div class="command-center-container">
-        <!-- Centro de Mando -->
-        <div class="command-center-wrapper">
-          <h3>📡 Centro de Mando</h3>
-          <app-command-center></app-command-center>
-        </div>
-      </div>
-    </div>
-    
+
+  <!-- Panel Izquierdo Completo -->
+  <div class="area-left-panel">
+    <app-workspace></app-workspace>
+    <app-plan-widget></app-plan-widget>
+  </div>
+
+  <!-- Log de Eventos -->
+  <div class="area-event-log">
+    <app-event-log></app-event-log>
+  </div>
+
+  <!-- Centro de Mando -->
+  <div class="area-command-center">
+    <h3>📡 Centro de Mando</h3>
+    <app-command-center></app-command-center>
   </div>
   
 </div>

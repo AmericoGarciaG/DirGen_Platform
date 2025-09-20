@@ -1,9 +1,10 @@
-// MonitoringWebAdvanced - Interfaz completa para navegador web
-.monitoring-dashboard-advanced {
-  height: 100vh;
+// MonitoringWebAdvanced - Interfaz completa para navegador web con CSS Grid
+.monitoring-grid-container {
+  display: grid;
+  // Define las filas: una fila pequeña para las etapas, y una fila que ocupa el resto del espacio
+  grid-template-rows: auto 1fr auto; // StatusBar + Main Content + Footer
+  height: 100vh; // Altura total de la ventana
   width: 100vw;
-  display: flex;
-  flex-direction: column;
   background: #1a1a1a;
   color: #e0e0e0;
   overflow: hidden;
@@ -62,17 +63,20 @@
   }
 
   // ===============================
-  // CONTENIDO PRINCIPAL
+  // CONTENEDOR DE PANELES PRINCIPALES
   // ===============================
-  .main-content {
-    flex: 1;
-    display: flex;
-    height: calc(100vh - 140px); // Altura total - StatusBar(80px) - Footer(60px)
+  .main-panels-container {
+    display: grid;
+    // Define las columnas: una para el panel izquierdo y otra para el derecho
+    grid-template-columns: 35% 1fr; // Izquierda 35%, derecha resto
+    overflow: hidden; // Previene desbordamientos en los paneles
     position: relative;
+    width: 100%;
+    height: 100%;
     
-    // Panel izquierdo mejorado
+    // Panel izquierdo optimizado para CSS Grid
     .left-panel {
-      width: 35%;
+      width: 100%; // Gestionado por CSS Grid
       min-width: 420px;
       background: linear-gradient(180deg, #2c2c2c, #252525);
       border-right: 3px solid #3498db;
@@ -82,6 +86,7 @@
       gap: 20px;
       overflow-y: auto;
       position: relative;
+      height: 100%; // Ocupa toda la altura disponible del grid
       
       // Efecto de gradiente en el borde
       &::after {
@@ -140,22 +145,22 @@
       }
     }
 
-    // Panel derecho mejorado
-    .right-panel {
-      width: 65%;
+    // Panel derecho con sub-grid de filas (LA PARTE CLAVE)
+    .right-panel-grid {
+      display: grid;
+      // Define las filas: el log ocupa todo el espacio posible, el centro de mando un tamaño fijo
+      grid-template-rows: 1fr auto; // Log flexible + Centro de Mando fijo
+      height: 100%; // Ocupa toda la altura disponible del grid padre
+      overflow: hidden; // Previene desbordamientos
       background: linear-gradient(180deg, #1e1e1e, #1a1a1a);
-      display: flex;
-      flex-direction: column;
       position: relative;
-      height: 100%; // Asegura ocupar toda la altura disponible
-      overflow: hidden; // Evita desbordes a nivel de panel
       
-      .log-section {
-        flex: 1 1 auto; // Se expande para ocupar el espacio restante
-        min-height: 0; // Permite que el flex item pueda encogerse correctamente
-        padding: 20px;
-        overflow-y: auto; // Scroll dentro del log
+      // Event Log - Ocupa la fila flexible del grid
+      .event-log-component {
+        overflow-y: auto; // Scroll dentro del log (CRITICAL)
         overflow-x: hidden;
+        min-height: 0; // Permite que el área del log se encoja en grid
+        padding: 20px;
         background: rgba(39, 174, 96, 0.1);
         border-radius: 12px;
         margin: 20px;
@@ -164,6 +169,7 @@
         backdrop-filter: blur(10px);
         position: relative;
         transition: all 0.3s ease;
+        width: calc(100% - 40px); // Ajuste para los márgenes
         
         &:hover {
           border-color: rgba(39, 174, 96, 0.5);
@@ -183,33 +189,26 @@
           animation: cornerGlow 2s infinite alternate;
         }
         
-        // Event log component should fill the container
-        app-event-log,
-        .event-log-component {
+        // Asegurar que el componente llene el contenedor
+        app-event-log {
           height: 100%;
           display: block;
           width: 100%;
         }
       }
 
-      // Command center section (bottom of right panel)
-      .command-center-section {
-        flex: 0 0 auto; // Elemento fijo al fondo
-        flex-shrink: 0; // No se encoge
+      // Command Center - Ocupa la fila fija del grid
+      app-command-center {
+        /* Fila fija del grid: tamaño automático por contenido */
         min-height: 120px;
         max-height: 200px;
         padding: 0 20px 20px 20px;
         overflow: hidden; // CRITICAL: Prevent horizontal overflow
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
         
-        app-command-center {
-          display: block;
-          width: 100%;
-          height: 100%;
-          overflow: hidden; // Ensure the component itself doesn't overflow
-          box-sizing: border-box;
-        }
-
-        // Additional styles to ensure proper width calculation
+        // Estilos profundos para asegurar control total del overflow
         ::ng-deep {
           .command-center {
             width: 100%;
@@ -331,7 +330,7 @@
 // ===============================
 
 // Partículas de fondo animadas
-.monitoring-dashboard-advanced::before {
+.monitoring-grid-container::before {
   content: '';
   position: absolute;
   top: 0;
@@ -348,7 +347,7 @@
 }
 
 // Grid de fondo sutil
-.monitoring-dashboard-advanced::after {
+.monitoring-grid-container::after {
   content: '';
   position: absolute;
   top: 0;
@@ -464,8 +463,8 @@
 // RESPONSIVE DESIGN AVANZADO
 // ===============================
 @media (max-width: 1600px) {
-  .monitoring-dashboard-advanced {
-    .main-content {
+  .monitoring-grid-container {
+    .main-panels-container {
       .left-panel {
         min-width: 380px;
         
@@ -475,8 +474,8 @@
         }
       }
       
-      .right-panel {
-        .log-section {
+      .right-panel-grid {
+        .event-log-component {
           margin: 16px;
           padding: 16px;
         }
@@ -486,15 +485,12 @@
 }
 
 @media (max-width: 1400px) {
-  .monitoring-dashboard-advanced {
-    .main-content {
-      .left-panel {
-        width: 40%;
-        min-width: 350px;
-      }
+  .monitoring-grid-container {
+    .main-panels-container {
+      grid-template-columns: 40% 1fr; // Ajustar proporción
       
-      .right-panel {
-        width: 60%;
+      .left-panel {
+        min-width: 350px;
       }
     }
     
@@ -509,18 +505,14 @@
 }
 
 @media (max-width: 1200px) {
-  .monitoring-dashboard-advanced {
-    .main-content {
-      flex-direction: column;
-      
-      .left-panel,
-      .right-panel {
-        width: 100%;
-        min-width: unset;
-      }
+  .monitoring-grid-container {
+    .main-panels-container {
+      grid-template-columns: 1fr; // Una sola columna
+      grid-template-rows: 40% 60%; // Filas verticales
       
       .left-panel {
-        height: 40%;
+        width: 100%;
+        min-width: unset;
         border-right: none;
         border-bottom: 3px solid #3498db;
         
@@ -544,8 +536,9 @@
         }
       }
       
-      .right-panel {
-        height: 60%;
+      .right-panel-grid {
+        width: 100%;
+        height: 100%;
       }
     }
     
@@ -559,11 +552,12 @@
 }
 
 @media (max-width: 768px) {
-  .monitoring-dashboard-advanced {
-    .main-content {
+  .monitoring-grid-container {
+    .main-panels-container {
+      grid-template-rows: 35% 65%; // Ajustar proporción para móvil
+      
       .left-panel {
         flex-direction: column;
-        height: 35%;
         padding: 12px;
         gap: 12px;
         
@@ -577,10 +571,8 @@
         }
       }
       
-      .right-panel {
-        height: 65%;
-        
-        .log-section {
+      .right-panel-grid {
+        .event-log-component {
           margin: 12px;
           padding: 12px;
         }
@@ -605,8 +597,8 @@
 // MODO ALTO CONTRASTE
 // ===============================
 @media (prefers-contrast: high) {
-  .monitoring-dashboard-advanced {
-    .main-content {
+  .monitoring-grid-container {
+    .main-panels-container {
       .left-panel {
         border-right-color: #ffffff;
         
@@ -619,8 +611,8 @@
         }
       }
       
-      .right-panel {
-        .log-section {
+      .right-panel-grid {
+        .event-log-component {
           border-color: #ffffff;
         }
       }
@@ -632,8 +624,8 @@
 // REDUCIR ANIMACIONES
 // ===============================
 @media (prefers-reduced-motion: reduce) {
-  .monitoring-dashboard-advanced::before,
-  .monitoring-dashboard-advanced::after,
+  .monitoring-grid-container::before,
+  .monitoring-grid-container::after,
   .welcome-banner,
   .floating-indicators .analysis-indicator,
   .left-panel::after {
@@ -642,7 +634,7 @@
   
   .left-panel .control-section,
   .left-panel .plan-section,
-  .right-panel .log-section {
+  .event-log-component {
     transition: none;
     
     &:hover {

@@ -1,3 +1,20 @@
-# Este archivo es un placeholder.
-# Las especificaciones OpenAPI para los componentes api-service y backfill-worker-service
-# se encuentran en los archivos design/api/api.yml y design/api/backfill.yml respectivamente.
+openapi: 3.0.0
+info:
+  title: Generic Component API
+  version: 1.0.0
+
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      responses:
+        '200':
+          description: Component is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy

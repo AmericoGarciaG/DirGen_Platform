@@ -1,5 +1,5 @@
 <!-- DirGen Monitoring Dashboard - Versión Web Avanzada -->
-<div class="monitoring-dashboard-advanced">
+<div class="monitoring-grid-container">
   
   <!-- StatusBar Avanzado - Barra superior con todas las funcionalidades -->
   <app-status-bar-advanced 
@@ -18,10 +18,10 @@
     </div>
   </div>
   
-  <!-- Main Content - Layout horizontal con paneles mejorados -->
-  <div class="main-content">
+  <!-- Main Panels Container - Layout horizontal con CSS Grid -->
+  <div class="main-panels-container">
     
-    <!-- Left Panel - Panel izquierdo (35% del ancho) -->
+    <!-- Columna 1: Panel Izquierdo -->
     <div class="left-panel">
       
       <!-- Project Control Section -->
@@ -41,18 +41,14 @@
       
     </div>
     
-    <!-- Right Panel - Panel derecho (65% del ancho) -->
-    <div class="right-panel">
+    <!-- Columna 2: Panel Derecho (LA PARTE MÁS IMPORTANTE) -->
+    <div class="right-panel-grid">
       
-      <!-- Live Event Log (NgRx version) -->
-      <div class="log-section">
-        <app-event-log class="event-log-component"></app-event-log>
-      </div>
-
-      <!-- Command Center (NgRx) -->
-      <div class="command-center-section">
-        <app-command-center></app-command-center>
-      </div>
+      <!-- Fila Flexible del Panel Derecho -->
+      <app-event-log class="event-log-component" style="overflow-y: auto;"></app-event-log>
+      
+      <!-- Fila Fija del Panel Derecho -->
+      <app-command-center></app-command-center>
       
     </div>
     
