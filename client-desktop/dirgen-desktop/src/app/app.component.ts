@@ -11,6 +11,8 @@ import { WebSocketState } from './shared/models/dirgen.models';
 // Components
 import { WorkspaceComponent } from './features/workspace/workspace.component';
 import { PlanWidgetComponent } from './features/monitoring/components/plan-widget/plan-widget.component';
+import { CommandCenterComponent } from './features/command-center/command-center.component';
+import { EventLogComponent } from './features/event-log/event-log.component';
 
 // Store
 import { AppState } from './store/models';
@@ -22,7 +24,9 @@ import { AppState } from './store/models';
     CommonModule, 
     RouterOutlet,
     WorkspaceComponent,
-    PlanWidgetComponent
+    PlanWidgetComponent,
+    CommandCenterComponent,
+    EventLogComponent
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'

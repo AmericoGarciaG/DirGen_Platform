@@ -235,109 +235,33 @@
   padding: 16px;
   overflow: hidden;
   
-  h3 {
-    margin: 0 0 16px;
-    color: #e0e0e0;
-    font-size: 16px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #404040;
-  }
-  
-  .events-log {
+  // FIXED: Ensure EventLogComponent takes full space
+  app-event-log {
     flex: 1;
-    overflow-y: auto;
-    background: #0a0a0a;
-    border-radius: 6px;
-    padding: 12px;
-    
-    .event-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 6px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      font-size: 12px;
-      
-      .event-time {
-        color: #888;
-        font-family: 'Courier New', monospace;
-        min-width: 80px;
-      }
-      
-      .event-source {
-        color: #007acc;
-        font-weight: 600;
-        min-width: 100px;
-      }
-      
-      .event-message {
-        color: #e0e0e0;
-        flex: 1;
-      }
-    }
-    
-    .no-events {
-      text-align: center;
-      color: #666;
-      padding: 24px;
-      font-style: italic;
-    }
+    display: block;
+    width: 100%;
+    height: 100%;
   }
 }
 
 .command-center-wrapper {
   padding: 16px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   
   h3 {
-    margin: 0 0 16px;
+    margin: 0 0 12px;
     color: #e0e0e0;
     font-size: 16px;
     padding-bottom: 8px;
     border-bottom: 1px solid #404040;
   }
   
-  .command-prompt {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    
-    .command-input {
-      flex: 1;
-      background: #2d2d30;
-      border: 1px solid #404040;
-      border-radius: 6px;
-      padding: 12px 16px;
-      color: #e0e0e0;
-      font-size: 14px;
-      outline: none;
-      transition: border-color 0.3s ease;
-      
-      &::placeholder {
-        color: #888;
-      }
-      
-      &:focus {
-        border-color: #007acc;
-      }
-    }
-    
-    .command-send {
-      background: #007acc;
-      border: none;
-      border-radius: 6px;
-      padding: 12px 16px;
-      color: white;
-      font-size: 16px;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-      
-      &:hover {
-        background: #005a99;
-      }
-      
-      &:active {
-        transform: scale(0.95);
-      }
-    }
+  // FIXED: Ensure the new CommandCenter component takes full width and height
+  app-command-center {
+    flex: 1;
+    display: block;
+    width: 100%;
   }
 }

@@ -67,8 +67,35 @@ export interface PlanState {
   error: string | null;
 }
 
+export interface ApplicationState {
+  // Estado general de la aplicación
+  status: 'idle' | 'initializing' | 'running' | 'waiting_approval' | 'error';
+  
+  // Información del run actual
+  currentRunId: string | null;
+  currentFile: {
+    file: File | null;
+    name: string | null;
+    size: number | null;
+    prompt: string | null;
+  };
+  
+  // Estado de carga
+  isLoading: boolean;
+  error: string | null;
+  
+  // WebSocket
+  webSocketConnected: boolean;
+  webSocketError: string | null;
+  
+  // Plan approval state
+  waitingForApproval: boolean;
+  planApprovalInProgress: boolean;
+}
+
 // Estado raíz de la aplicación
 export interface AppState {
+  app: ApplicationState;
   workspace: WorkspaceState;
   plan: PlanState;
 }
@@ -87,6 +114,23 @@ export const initialPlanState: PlanState = {
   expandedTaskIds: [],
   loading: false,
   error: null
+};
+
+export const initialApplicationState: ApplicationState = {
+  status: 'idle',
+  currentRunId: null,
+  currentFile: {
+    file: null,
+    name: null,
+    size: null,
+    prompt: null
+  },
+  isLoading: false,
+  error: null,
+  webSocketConnected: false,
+  webSocketError: null,
+  waitingForApproval: false,
+  planApprovalInProgress: false
 };
 
 // Helpers para crear objetos

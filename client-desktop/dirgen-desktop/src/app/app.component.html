@@ -54,23 +54,14 @@
       <div class="events-container">
         <!-- Log de Eventos -->
         <div class="events-wrapper">
-          <h3>📜 Log de Eventos</h3>
-          <div class="events-log">
-            <!-- TODO: Conectar con NgRx store para mostrar eventos -->
-            <div class="no-events">
-              Esperando eventos...
-            </div>
-          </div>
+          <app-event-log></app-event-log>
         </div>
       </div>
       <div class="command-center-container">
         <!-- Centro de Mando -->
         <div class="command-center-wrapper">
           <h3>📡 Centro de Mando</h3>
-          <div class="command-prompt">
-            <input type="text" placeholder="Escribe un comando o arrastra archivos SVAD aquí..." class="command-input">
-            <button class="command-send">🚀</button>
-          </div>
+          <app-command-center></app-command-center>
         </div>
       </div>
     </div>
