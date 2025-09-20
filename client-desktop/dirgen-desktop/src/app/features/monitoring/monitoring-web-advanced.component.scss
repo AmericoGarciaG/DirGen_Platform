@@ -147,11 +147,15 @@
       display: flex;
       flex-direction: column;
       position: relative;
+      height: 100%; // Asegura ocupar toda la altura disponible
+      overflow: hidden; // Evita desbordes a nivel de panel
       
       .log-section {
-        flex: 1;
+        flex: 1 1 auto; // Se expande para ocupar el espacio restante
+        min-height: 0; // Permite que el flex item pueda encogerse correctamente
         padding: 20px;
-        overflow: hidden;
+        overflow-y: auto; // Scroll dentro del log
+        overflow-x: hidden;
         background: rgba(39, 174, 96, 0.1);
         border-radius: 12px;
         margin: 20px;
@@ -190,6 +194,8 @@
 
       // Command center section (bottom of right panel)
       .command-center-section {
+        flex: 0 0 auto; // Elemento fijo al fondo
+        flex-shrink: 0; // No se encoge
         min-height: 120px;
         max-height: 200px;
         padding: 0 20px 20px 20px;
