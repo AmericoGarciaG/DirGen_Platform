@@ -14,7 +14,8 @@ import { StatusBarAdvancedComponent } from './components/status-bar-advanced/sta
 import { StatusFooterComponent } from './components/status-footer/status-footer.component';
 import { ProjectControlComponent } from './components/project-control/project-control.component';
 import { PlanWidgetComponent } from './components/plan-widget/plan-widget.component';
-import { LiveEventLogComponent } from './components/live-event-log/live-event-log.component';
+import { EventLogComponent } from '../event-log/event-log.component';
+import { CommandCenterComponent } from '../command-center/command-center.component';
 
 // Services
 import { ApiService } from '../../core/services/api.service';
@@ -35,7 +36,8 @@ import { DirgenMessage, WebSocketState } from '../../shared/models/dirgen.models
     StatusFooterComponent,
     ProjectControlComponent,
     PlanWidgetComponent,
-    LiveEventLogComponent
+    EventLogComponent,
+    CommandCenterComponent
   ],
   templateUrl: './monitoring-web-advanced.component.html',
   styleUrls: ['./monitoring-web-advanced.component.scss']

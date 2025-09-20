@@ -179,9 +179,25 @@
           animation: cornerGlow 2s infinite alternate;
         }
         
-        .live-event-log-component {
+        // Event log component should fill the container
+        app-event-log,
+        .event-log-component {
           height: 100%;
           display: block;
+          width: 100%;
+        }
+      }
+
+      // Command center section (bottom of right panel)
+      .command-center-section {
+        min-height: 120px;
+        max-height: 200px;
+        padding: 0 20px 20px 20px;
+        
+        app-command-center {
+          display: block;
+          width: 100%;
+          height: 100%;
         }
       }
     }

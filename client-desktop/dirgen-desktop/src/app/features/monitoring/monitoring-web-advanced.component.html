@@ -44,12 +44,14 @@
     <!-- Right Panel - Panel derecho (65% del ancho) -->
     <div class="right-panel">
       
-      <!-- Live Event Log -->
+      <!-- Live Event Log (NgRx version) -->
       <div class="log-section">
-        <app-live-event-log 
-          [webSocketState]="webSocketState"
-          class="live-event-log-component">
-        </app-live-event-log>
+        <app-event-log class="event-log-component"></app-event-log>
+      </div>
+
+      <!-- Command Center (NgRx) -->
+      <div class="command-center-section">
+        <app-command-center></app-command-center>
       </div>
       
     </div>
