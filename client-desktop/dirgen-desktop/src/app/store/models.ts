@@ -91,6 +91,11 @@ export interface ApplicationState {
   // Plan approval state
   waitingForApproval: boolean;
   planApprovalInProgress: boolean;
+  
+  // Estado del SDLC
+  currentSdlcStatus: string | null;  // Estado técnico del backend
+  currentSdlcPhase: string | null;   // Nombre legible para UI
+  sdlcMetadata: any;
 }
 
 // Estado raíz de la aplicación
@@ -130,7 +135,10 @@ export const initialApplicationState: ApplicationState = {
   webSocketConnected: false,
   webSocketError: null,
   waitingForApproval: false,
-  planApprovalInProgress: false
+  planApprovalInProgress: false,
+  currentSdlcStatus: null,
+  currentSdlcPhase: null,
+  sdlcMetadata: {}
 };
 
 // Helpers para crear objetos

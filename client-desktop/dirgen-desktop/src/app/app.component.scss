@@ -94,21 +94,38 @@
           color: #28a745;
         }
       }
+      
+      &.pending {
+        .stage-icon {
+          background: #2d2d30;
+          border-color: #404040;
+        }
+        
+        .stage-label {
+          color: #888;
+        }
+      }
     }
     
     .stage-connector {
       flex: 1;
-      height: 1px; // thinner line
+      height: 2px;
       background: #404040;
-      margin: 0 6px; // compact spacing
+      margin: 0 8px;
       position: relative;
+      transition: background 0.3s ease;
+      
+      // El conector hereda el estado de la etapa anterior
+      &.completed {
+        background: linear-gradient(90deg, #28a745, #007acc);
+      }
       
       &.active {
         background: linear-gradient(90deg, #007acc, #404040);
       }
       
-      &.completed {
-        background: #28a745;
+      &.pending {
+        background: #404040;
       }
     }
   }

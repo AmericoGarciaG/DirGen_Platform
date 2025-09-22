@@ -81,6 +81,25 @@ export const selectPlanApprovalInProgress = createSelector(
 );
 
 // ============================================================================
+// SDLC STATE SELECTORS  
+// ============================================================================
+
+export const selectCurrentSdlcStatus = createSelector(
+  selectAppState,
+  (state) => state.currentSdlcStatus
+);
+
+export const selectCurrentSdlcPhase = createSelector(
+  selectAppState,
+  (state) => state.currentSdlcPhase
+);
+
+export const selectSdlcMetadata = createSelector(
+  selectAppState,
+  (state) => state.sdlcMetadata
+);
+
+// ============================================================================
 // COMBINED SELECTORS
 // ============================================================================
 

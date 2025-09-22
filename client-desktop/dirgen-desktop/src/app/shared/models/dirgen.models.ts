@@ -27,6 +27,7 @@ export type DirgenMessageType =
   | 'executive_summary'
   | 'retry_attempt'
   | 'info'
+  | 'run_status_change'
   | 'raw_message';
 
 // Tipos adicionales basados en mensajes reales del backend
@@ -199,6 +200,21 @@ export interface InfoMessage extends BaseMessage {
   };
 }
 
+// Mensaje de cambio de estado del run (SDLC)
+export interface RunStatusChangeMessage extends BaseMessage {
+  type: 'run_status_change';
+  data: {
+    run_id: string;
+    status: string; // Estado técnico del backend (ej: 'requirements_processing')
+    phase: string;  // Nombre legible para la UI (ej: 'Procesando Requerimientos')
+    timestamp: string;
+    retry_count: number;
+    metadata: any;
+    reason?: string;
+    message?: string;
+  };
+}
+
 // Mensaje de resultado de quality gate
 export interface QualityGateResultMessage extends BaseMessage {
   type: 'quality_gate_result';
@@ -228,6 +244,7 @@ export type DirgenMessage =
   | QualityGateStartMessage
   | QualityGateResultMessage
   | InfoMessage
+  | RunStatusChangeMessage
   | RawMessage;
 
 // Estados de conexión WebSocket

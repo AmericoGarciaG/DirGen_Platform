@@ -4,30 +4,18 @@
   <!-- Barra de Etapas del SDLC -->
   <div class="area-stepper">
     <div class="progress-stages">
-      <div class="stage active">
-        <div class="stage-icon">📋</div>
-        <div class="stage-label">Análisis de Req.</div>
-      </div>
-      <div class="stage-connector"></div>
-      <div class="stage">
-        <div class="stage-icon">🎯</div>
-        <div class="stage-label">Diseño</div>
-      </div>
-      <div class="stage-connector"></div>
-      <div class="stage">
-        <div class="stage-icon">💻</div>
-        <div class="stage-label">Código</div>
-      </div>
-      <div class="stage-connector"></div>
-      <div class="stage">
-        <div class="stage-icon">🧪</div>
-        <div class="stage-label">Pruebas</div>
-      </div>
-      <div class="stage-connector"></div>
-      <div class="stage">
-        <div class="stage-icon">🚀</div>
-        <div class="stage-label">Despliegue</div>
-      </div>
+      <ng-container *ngFor="let stage of sdlcStages; let i = index; trackBy: trackStage">
+        <div class="stage" 
+             [ngClass]="{
+               'completed': stage.status === 'completed',
+               'active': stage.status === 'active',
+               'pending': stage.status === 'pending'
+             }">
+          <div class="stage-icon">{{ stage.icon }}</div>
+          <div class="stage-label">{{ stage.name }}</div>
+        </div>
+        <div class="stage-connector" *ngIf="i < sdlcStages.length - 1"></div>
+      </ng-container>
     </div>
   </div>
 

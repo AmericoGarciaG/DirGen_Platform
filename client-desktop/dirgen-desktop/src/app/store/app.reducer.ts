@@ -73,6 +73,17 @@ export const appReducer = createReducer(
   })),
 
   on(AppActions.webSocketMessageReceived, (state, { message }) => {
+    // NUEVO: Manejar mensajes de cambio de estado del SDLC
+    if (message.type === 'run_status_change') {
+      const statusMessage = message as any;
+      return {
+        ...state,
+        currentSdlcStatus: statusMessage.data.status,
+        currentSdlcPhase: statusMessage.data.phase,
+        sdlcMetadata: statusMessage.data.metadata || {}
+      };
+    }
+    
     // Detectar si el mensaje es una solicitud de aprobación de fase de diseño (NUEVO)
     if (message.type === 'design_phase_approval_request') {
       return {
@@ -207,5 +218,11 @@ export const appReducer = createReducer(
     status
   })),
 
-  on(AppActions.clearCurrentRun, () => initialApplicationState)
+  on(AppActions.clearCurrentRun, () => ({
+    ...initialApplicationState,
+    // Limpiar explícitamente el estado SDLC
+    currentSdlcStatus: null,
+    currentSdlcPhase: null,
+    sdlcMetadata: {}
+  }))
 );
