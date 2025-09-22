@@ -108,7 +108,7 @@ export const planApprovalFailure = createAction(
  */
 export const setApplicationStatus = createAction(
   '[App] Set Application Status',
-  props<{ status: 'idle' | 'initializing' | 'running' | 'waiting_approval' | 'error' }>()
+  props<{ status: 'idle' | 'initializing' | 'running' | 'waiting_approval' | 'completed' | 'error' }>()
 );
 
 /**

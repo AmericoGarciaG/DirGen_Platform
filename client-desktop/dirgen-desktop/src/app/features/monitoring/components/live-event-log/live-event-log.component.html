@@ -15,33 +15,65 @@
         <small>Los mensajes aparecerán aquí cuando inicie una ejecución</small>
       </div>
     } @else {
-      <div class="log-entries">
+      <!-- Event Log Entries with Expansion Panels -->
+      <mat-accordion class="log-entries-accordion" multi="true">
         @for (message of webSocketState.messages; track message.timestamp) {
-          <div class="log-entry" [attr.data-type]="message.type">
-            <ng-container>
-              <div class="entry-header">
-                <span class="message-icon" [style.color]="parseMessage(message).color">{{ parseMessage(message).icon }}</span>
-                <span class="message-source">{{ parseMessage(message).source }}</span>
+          <mat-expansion-panel 
+            class="log-expansion-panel" 
+            [attr.data-type]="message.type"
+            [expanded]="!isMessageExpandable(message)">
+            
+            <!-- Panel Header - Always Visible -->
+            <mat-expansion-panel-header class="log-panel-header">
+              <mat-panel-title class="log-panel-title">
+                <div class="title-content">
+                  <span class="message-icon" [style.color]="parseMessage(message).color">
+                    {{ parseMessage(message).icon }}
+                  </span>
+                  <span class="message-source">{{ parseMessage(message).source }}</span>
+                  <span class="message-summary" [style.color]="parseMessage(message).color">
+                    {{ getMessageSummary(message) }}
+                  </span>
+                </div>
+              </mat-panel-title>
+              <mat-panel-description class="log-panel-description">
                 <span class="message-time">{{ formatTimestamp(message.timestamp) }}</span>
+              </mat-panel-description>
+            </mat-expansion-panel-header>
+            
+            <!-- Panel Content - Shown When Expanded -->
+            <div class="log-panel-content" *ngIf="isMessageExpandable(message)">
+              <div class="full-message-text" [style.color]="parseMessage(message).color">
+                {{ parseMessage(message).text }}
               </div>
               
-              <div class="entry-content">
-                <p class="message-text" [style.color]="parseMessage(message).color">
-                  {{ truncateText(parseMessage(message).text) }}
-                </p>
-                
-                <!-- Mostrar JSON original si es necesario (solo para debug) -->
-                @if (parseMessage(message).icon === '❓') {
-                  <details class="raw-message">
-                    <summary>Ver mensaje original</summary>
-                    <pre>{{ message | json }}</pre>
-                  </details>
-                }
-              </div>
-            </ng-container>
-          </div>
+              <!-- Additional Data Section -->
+              @if (hasDataProperty(message) && getMessageData(message) && Object.keys(getMessageData(message)!).length > 0) {
+                <div class="additional-data">
+                  <h4>Datos Adicionales:</h4>
+                  <div class="data-grid">
+                    @for (dataEntry of getDataEntries(message); track dataEntry[0]) {
+                      <div class="data-item">
+                        <span class="data-key">{{ dataEntry[0] }}:</span>
+                        <span class="data-value">{{ formatDataValue(dataEntry[1]) }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+              
+              <!-- Raw JSON for Debug Messages -->
+              @if (parseMessage(message).icon === '❓') {
+                <details class="raw-message">
+                  <summary>Ver mensaje original completo</summary>
+                  <pre>{{ message | json }}</pre>
+                </details>
+              }
+            </div>
+            
+          </mat-expansion-panel>
         }
-      </div>
+      </mat-accordion>
     }
   </div>
 </div>

@@ -151,20 +151,48 @@ export const planReducer = createReducer(
   
   // WebSocket-derived actions
   on(PlanActions.planGeneratedFromAgent, (state, { runId, tasks, planData }) => {
+    console.log('📋 Processing plan generated from agent:', { runId, tasks, planData });
+    
     // Convertir las tareas del agente al formato interno
-    const planTasks = tasks.map((task: any, index: number) => 
-      createPlanTask(
-        task.title || task.description || `Tarea ${index + 1}`,
-        task.description || task.title || '',
-        index + 1
-      )
-    );
+    let planTasks;
+    
+    if (tasks && tasks.length > 0) {
+      // Usar las tareas proporcionadas por el agente
+      planTasks = tasks.map((task: any, index: number) => 
+        createPlanTask(
+          task.title || task.description || `Tarea ${index + 1}`,
+          task.description || task.title || '',
+          index + 1
+        )
+      );
+    } else {
+      // Generar tareas por defecto si no se proporcionaron tareas específicas
+      planTasks = [
+        createPlanTask(
+          'Análisis de Requerimientos',
+          'Validar y procesar el documento SVAD proporcionado',
+          1
+        ),
+        createPlanTask(
+          'Planificación Detallada',
+          'Generar plan de implementación detallado basado en los requerimientos',
+          2
+        ),
+        createPlanTask(
+          'Validación del Plan',
+          'Verificar que el plan cumple con los criterios de calidad',
+          3
+        )
+      ];
+    }
     
     const newPlan = createExecutionPlan(
       runId,
-      planData?.title || `Plan para ${runId}`,
+      planData?.title || `Plan de Ejecución - ${runId.substring(0, 8)}`,
       planTasks
     );
+    
+    console.log('📋 Plan created for PlanWidget:', newPlan);
     
     return {
       ...state,

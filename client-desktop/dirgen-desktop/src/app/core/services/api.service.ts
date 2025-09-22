@@ -243,18 +243,19 @@ export class ApiService {
   }
 
   /**
-   * Aprueba un plan generado por el Orquestador
-   * @param runId - ID del run para el cual aprobar el plan
+   * Aprueba o rechaza un plan generado por el Orquestador
+   * @param runId - ID del run para el cual responder al plan
+   * @param approved - Si el plan es aprobado (true) o rechazado (false)
    * @param userResponse - Respuesta del usuario (opcional)
-   * @returns Observable con la respuesta de aprobación
+   * @returns Observable con la respuesta
    */
-  approvePlan(runId: string, userResponse?: string): Observable<any> {
-    console.log('📋 Enviando aprobación del plan para run:', runId);
+  approvePlan(runId: string, approved: boolean, userResponse?: string): Observable<any> {
+    console.log(`📋 Enviando ${approved ? 'aprobación' : 'rechazo'} del plan para run:`, runId);
     console.log('💬 Respuesta del usuario:', userResponse);
     
     const body = {
-      approved: true,
-      user_response: userResponse || 'Aprobado'
+      approved: approved,
+      user_response: userResponse || (approved ? 'Aprobado' : 'Rechazado')
     };
     
     return this.http.post(
@@ -267,11 +268,11 @@ export class ApiService {
       }
     ).pipe(
       map(response => {
-        console.log('✅ Plan aprobado exitosamente:', response);
+        console.log(`✅ Plan ${approved ? 'aprobado' : 'rechazado'} exitosamente:`, response);
         return response;
       }),
       catchError(error => {
-        console.error('❌ Error aprobando plan:');
+        console.error(`❌ Error ${approved ? 'aprobando' : 'rechazando'} plan:`);
         console.error('Status:', error.status);
         console.error('Error Object:', error);
         throw error;

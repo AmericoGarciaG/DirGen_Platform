@@ -22,83 +22,84 @@ export class AppEffects {
     private apiService: ApiService
   ) {}
   
-  // Listen to WebSocket messages and dispatch appropriate actions
+  // Listen to WebSocket messages and dispatch webSocketMessageReceived for ALL messages
   webSocketMessages$ = createEffect(() =>
     this.apiService.messages$.pipe(
       map(message => {
         console.log('📨 Processing WebSocket message in Effects:', message);
+        // IMPORTANTE: Siempre despachar webSocketMessageReceived para que el reducer lo procese
+        return AppActions.webSocketMessageReceived({ message });
+      })
+    )
+  );
+  
+  // Effect secundario para manejar acciones específicas basadas en mensajes WebSocket
+  handleSpecificWebSocketMessages$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(AppActions.webSocketMessageReceived),
+      switchMap(({ message }) => {
+        const actions = [];
         
-        // Handle different message types
+        // Handle different message types and generate additional actions
         switch (message.type) {
-          // Plan-related messages
           case 'plan_generated':
-            return PlanActions.planGeneratedFromAgent({
+            // CRÍTICO: Despachar acción para que el PlanWidget muestre el plan
+            actions.push(PlanActions.planGeneratedFromAgent({
               runId: message.run_id || '',
               tasks: (message as any).data?.tasks || [],
               planData: (message as any).data
-            });
-          
+            }));
+            console.log('📋 Plan generated action dispatched for PlanWidget');
+            break;
+            
           case 'plan_approved':
-            return PlanActions.planApprovedFromUser({
+            actions.push(PlanActions.planApprovedFromUser({
               runId: message.run_id || '',
               userResponse: (message as any).data?.user_response || ''
-            });
+            }));
+            break;
           
           case 'executive_summary':
-            // Could trigger a notification or update plan details
-            return PlanActions.updateTaskProgress({
+            actions.push(PlanActions.updateTaskProgress({
               taskId: 'summary_task',
               updates: {
                 justification: (message as any).data?.summary
               }
-            });
+            }));
+            break;
           
-          // File operation messages (deliverables)
           case 'file_operation':
             if ((message as any).operation === 'create') {
-              return WorkspaceActions.deliverableCreatedFromAgent({
+              actions.push(WorkspaceActions.deliverableCreatedFromAgent({
                 filePath: (message as any).file_path || '',
                 agentName: message.source || 'Unknown',
                 description: `Archivo creado: ${(message as any).file_path}`
-              });
+              }));
             }
             break;
           
-          // Task progress messages
           case 'action':
-            // If action is related to file creation, add as deliverable
             if ((message as any).action?.includes('writeFile') || 
                 (message as any).action?.includes('createFile')) {
               const filePath = this.extractFilePathFromAction((message as any).action);
               if (filePath) {
-                return WorkspaceActions.deliverableCreatedFromAgent({
+                actions.push(WorkspaceActions.deliverableCreatedFromAgent({
                   filePath,
                   agentName: message.source || 'Agent',
                   description: `Archivo generado por ${message.source}`
-                });
+                }));
               }
-            }
-            break;
-          
-          // Phase messages that might indicate task completion
-          case 'phase_end':
-            const phaseData = (message as any).data;
-            if (phaseData?.status === 'APROBADO') {
-              // Could mark related tasks as completed
-              console.log('Phase completed:', phaseData.name);
             }
             break;
             
           default:
-            // For other message types, we might not need specific actions
-            console.log('Unhandled message type in effects:', message.type);
+            console.log('No additional actions needed for message type:', message.type);
             break;
         }
         
-        // Return a no-op action for unhandled messages
-        return { type: '[WebSocket] Unhandled Message', payload: message };
-      }),
-      filter(action => action.type !== '[WebSocket] Unhandled Message')
+        // Return all actions, or empty array if none
+        return actions;
+      })
     )
   );
   
@@ -229,22 +230,21 @@ export class AppEffects {
     this.actions$.pipe(
       ofType(AppActions.planApprovalSubmitted),
       switchMap(({ run_id, approved, userResponse }) => {
-        if (approved) {
-          return this.apiService.approvePlan(run_id, userResponse).pipe(
+        return this.apiService.approvePlan(run_id, approved, userResponse).pipe(
             map(() => {
-              console.log('✅ Plan aprobado exitosamente');
-              return AppActions.planApprovalSuccess({ run_id });
+              console.log(`✅ Plan ${approved ? 'aprobado' : 'rechazado'} exitosamente`);
+              if (approved) {
+                return AppActions.planApprovalSuccess({ run_id });
+              } else {
+                // Si el plan fue rechazado, limpiar el run actual
+                return AppActions.clearCurrentRun();
+              }
             }),
             catchError(error => {
-              console.error('❌ Error aprobando plan:', error);
+              console.error(`❌ Error ${approved ? 'aprobando' : 'rechazando'} plan:`, error);
               return of(AppActions.planApprovalFailure({ error }));
             })
           );
-        } else {
-          // Si el plan no es aprobado, limpiar el run actual
-          console.log('❌ Plan rechazado por el usuario');
-          return of(AppActions.clearCurrentRun());
-        }
       })
     )
   );

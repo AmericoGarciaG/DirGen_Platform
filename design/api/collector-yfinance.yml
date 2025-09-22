@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  title: Generic Component API
+  title: Collector YFinance API
   version: 1.0.0
 paths: {}
 components: {}

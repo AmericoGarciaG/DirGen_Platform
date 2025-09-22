@@ -1,0 +1,22 @@
+openapi: 3.0.0
+info:
+  title: Generic Component API
+  version: 1.0.0
+paths:
+  /:
+    get:
+      summary: Generic endpoint for a component
+      responses:
+        '200':
+          description: Successful response from the component.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: OK
+                  message:
+                    type: string
+                    example: Component is running.

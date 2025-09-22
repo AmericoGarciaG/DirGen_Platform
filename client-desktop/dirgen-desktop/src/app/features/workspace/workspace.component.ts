@@ -130,6 +130,21 @@ export class WorkspaceComponent implements OnInit, OnDestroy {
   }
   
   /**
+   * Gets the actual color value for file type icons
+   */
+  getFileTypeColorValue(type: string): string {
+    switch (type.toLowerCase()) {
+      case 'svad': return '#1976d2'; // primary blue
+      case 'pcce': return '#ff4081'; // accent pink
+      case 'md': return '#1976d2'; // primary blue
+      case 'json': return '#f44336'; // warn red
+      case 'yml':
+      case 'yaml': return '#ff4081'; // accent pink
+      default: return '#757575'; // grey
+    }
+  }
+  
+  /**
    * Formats file size for display
    */
   formatFileSize(bytes: number): string {

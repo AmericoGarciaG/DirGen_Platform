@@ -73,12 +73,50 @@ export const appReducer = createReducer(
   })),
 
   on(AppActions.webSocketMessageReceived, (state, { message }) => {
-    // Detectar si el mensaje es una solicitud de aprobación de plan
+    // Detectar si el mensaje es una solicitud de aprobación de fase de diseño (NUEVO)
+    if (message.type === 'design_phase_approval_request') {
+      return {
+        ...state,
+        status: 'waiting_approval' as const,
+        waitingForApproval: true,
+        isLoading: false, // CRÍTICO: resetear loading al esperar aprobación
+        error: null
+      };
+    }
+    
+    // Detectar si el mensaje es una solicitud de aprobación de plan de ejecución
     if (message.type === 'plan_generated') {
       return {
         ...state,
         status: 'waiting_approval' as const,
-        waitingForApproval: true
+        waitingForApproval: true,
+        isLoading: false, // CRÍTICO: resetear loading al esperar aprobación
+        error: null
+      };
+    }
+    
+    // Detectar si el plan fue aprobado por el backend (confirmación)
+    if (message.type === 'plan_approved') {
+      return {
+        ...state,
+        status: 'running' as const,
+        waitingForApproval: false,
+        planApprovalInProgress: false,
+        isLoading: false,
+        error: null
+      };
+    }
+    
+    // Detectar si el plan fue rechazado por el backend
+    if (message.type === 'plan_rejected') {
+      return {
+        ...state,
+        status: 'idle' as const,
+        waitingForApproval: false,
+        planApprovalInProgress: false,
+        isLoading: false,
+        currentRunId: null,
+        error: null
       };
     }
     
@@ -88,7 +126,44 @@ export const appReducer = createReducer(
         ...state,
         status: 'running' as const,
         waitingForApproval: false,
-        planApprovalInProgress: false
+        planApprovalInProgress: false,
+        isLoading: false,
+        error: null
+      };
+    }
+    
+    // CRÍTICO: Detectar errores de fase que deben resetear el estado
+    if (message.type === 'phase_end') {
+      const phaseData = (message as any).data;
+      if (phaseData?.status === 'RECHAZADO' || phaseData?.status === 'ERROR') {
+        return {
+          ...state,
+          status: 'error' as const,
+          isLoading: false, // CRITICO: resetear loading al tener error
+          waitingForApproval: false,
+          planApprovalInProgress: false,
+          error: `Fase ${phaseData.name || 'desconocida'} falló: ${phaseData.status}`
+        };
+      } else if (phaseData?.status === 'APROBADO') {
+        // Continuar ejecución normal
+        return {
+          ...state,
+          status: 'running' as const,
+          isLoading: false,
+          error: null
+        };
+      }
+    }
+    
+    // Detectar finalización exitosa del run
+    if (message.type === 'run_completed' || message.type === 'execution_completed') {
+      return {
+        ...state,
+        status: 'completed' as const,
+        isLoading: false,
+        waitingForApproval: false,
+        planApprovalInProgress: false,
+        error: null
       };
     }
     

@@ -49,12 +49,19 @@ export interface AttachedFile {
          (drop)="onDrop($event)">
 
       <!-- Status Display -->
-      <div class="status-display" *ngIf="(applicationStatus$ | async) !== 'idle'">
-        <div class="status-info">
+      <div class="status-display" *ngIf="applicationStatus$ | async as status; else hideStatus">
+        <div class="status-info" 
+             [class.error-status]="status === 'error'" 
+             [class.completed-status]="status === 'completed'"
+             *ngIf="status !== 'idle'">
           <mat-icon [color]="getStatusColor()">{{ getStatusIcon() }}</mat-icon>
           <span class="status-text">{{ getStatusText() }}</span>
+          <div *ngIf="status === 'error'" class="error-details">
+            <small class="error-message" *ngIf="appError$ | async as error">{{ error }}</small>
+          </div>
         </div>
       </div>
+      <ng-template #hideStatus></ng-template>
 
       <!-- File Display Area -->
       <div *ngIf="attachedFiles.length > 0" class="attached-files">
@@ -64,7 +71,7 @@ export interface AttachedFile {
                     [removable]="!isProcessing"
                     (removed)="removeAttachedFile(file.id)">
             <mat-icon matChipAvatar>attach_file</mat-icon>
-            {{ file.name }}
+            <span class="filename">{{ file.name || 'Archivo sin nombre' }}</span>
             <small class="file-size">({{ formatFileSize(file.size) }})</small>
             <button matChipRemove [disabled]="isProcessing">
               <mat-icon>cancel</mat-icon>
@@ -80,18 +87,12 @@ export interface AttachedFile {
         class="progress-bar">
       </mat-progress-bar>
 
-      <!-- Approval Request -->
-      <div *ngIf="waitingForApproval$ | async" class="approval-request">
-        <mat-icon color="warn">schedule</mat-icon>
-        <span>⏳ El plan ha sido generado. ¿Deseas proceder con la ejecución?</span>
-      </div>
-
       <!-- Input Field -->
       <div class="input-container">
         <mat-form-field appearance="outline" class="prompt-input">
           <mat-label>
             <span *ngIf="!(waitingForApproval$ | async)">Escribe un comando o arrastra archivos SVAD...</span>
-            <span *ngIf="waitingForApproval$ | async">Responde: ¿Aprobar el plan? (sí/no)</span>
+            <span *ngIf="waitingForApproval$ | async">Responde al sistema (sí/no)...</span>
           </mat-label>
           
           <input matInput
@@ -258,18 +259,34 @@ export class CommandCenterComponent implements OnInit, OnDestroy {
     const text = this.promptText.toLowerCase();
     const isApproval = text.includes('sí') || text.includes('si') || 
                       text.includes('adelante') || text.includes('procede') ||
-                      text.includes('ok') || text.includes('aprobar');
+                      text.includes('ok') || text.includes('aprobar') ||
+                      text.includes('yes') || text.includes('y');
+    
+    const isRejection = text.includes('no') || text.includes('rechazar') ||
+                       text.includes('cancelar') || text.includes('parar') ||
+                       text.includes('detener');
     
     // Si estamos esperando aprobación, manejar la respuesta
-    this.store.select(AppSelectors.selectWaitingForApproval).pipe(
-      // Solo tomar el primer valor
-    ).subscribe(waitingForApproval => {
+    this.store.select(AppSelectors.selectWaitingForApproval).subscribe(waitingForApproval => {
       if (waitingForApproval) {
         this.store.select(AppSelectors.selectCurrentRunId).subscribe(runId => {
           if (runId) {
+            // Determinar si es aprobación o rechazo
+            let approved = false;
+            if (isApproval) {
+              approved = true;
+            } else if (isRejection) {
+              approved = false;
+            } else {
+              // Si no es claro, tratar como aprobación si el texto es positivo
+              approved = !text.includes('no');
+            }
+            
+            console.log(`🔄 Procesando respuesta de aprobación: ${approved ? 'APROBADO' : 'RECHAZADO'}`);
+            
             this.store.dispatch(AppActions.planApprovalSubmitted({
               run_id: runId,
-              approved: isApproval,
+              approved: approved,
               userResponse: this.promptText
             }));
           }
@@ -343,6 +360,8 @@ export class CommandCenterComponent implements OnInit, OnDestroy {
    */
   private addFiles(files: File[]): void {
     files.forEach(file => {
+      console.log('📁 Archivo cargado:', file.name, 'Tamaño:', file.size, 'Tipo:', file.type);
+      
       // Validar tipo de archivo
       if (this.isValidFile(file)) {
         const attachedFile: AttachedFile = {
@@ -353,12 +372,16 @@ export class CommandCenterComponent implements OnInit, OnDestroy {
           type: file.type
         };
         
+        console.log('✅ AttachedFile creado:', attachedFile);
         this.attachedFiles.push(attachedFile);
+        console.log('📋 Lista actual de archivos:', this.attachedFiles);
         
         // Actualizar el prompt text si está vacío
         if (!this.promptText.trim()) {
           this.promptText = `Iniciar análisis con ${file.name}`;
         }
+      } else {
+        console.log('❌ Archivo no válido:', file.name);
       }
     });
   }
@@ -412,29 +435,119 @@ export class CommandCenterComponent implements OnInit, OnDestroy {
    */
   getPlaceholderText(): string {
     if (this.isProcessing) return 'Procesando...';
-    // Usar async pipe en el template sería mejor, pero para simplificar:
-    return 'Iniciar análisis, adjuntar archivos, dar instrucciones...';
+    
+    let placeholderText = 'Iniciar análisis, adjuntar archivos, dar instrucciones...';
+    this.applicationStatus$.subscribe(status => {
+      switch (status) {
+        case 'error':
+          placeholderText = 'Error en el proceso. Puedes intentar de nuevo...';
+          break;
+        case 'completed':
+          placeholderText = 'Proceso completado. ¿Quieres iniciar uno nuevo?';
+          break;
+        case 'waiting_approval':
+          placeholderText = 'Responde \'sí\' o \'no\' para aprobar el plan...';
+          break;
+        case 'running':
+          placeholderText = 'Proceso en ejecución...';
+          break;
+        case 'initializing':
+          placeholderText = 'Iniciando...';
+          break;
+        case 'idle':
+        default:
+          placeholderText = 'Iniciar análisis, adjuntar archivos, dar instrucciones...';
+          break;
+      }
+    }).unsubscribe();
+    
+    return placeholderText;
   }
   
   /**
-   * Obtiene el color del status
+   * Obtiene el color del status según el estado de la aplicación
    */
   getStatusColor(): string {
-    // Esta lógica se puede mejorar subscribiéndose al estado
-    return 'primary';
+    let statusColor = 'primary';
+    this.applicationStatus$.subscribe(status => {
+      switch (status) {
+        case 'error':
+          statusColor = 'warn';
+          break;
+        case 'completed':
+          statusColor = 'accent';
+          break;
+        case 'waiting_approval':
+          statusColor = 'warn';
+          break;
+        case 'running':
+        case 'initializing':
+        default:
+          statusColor = 'primary';
+          break;
+      }
+    }).unsubscribe();
+    return statusColor;
   }
   
   /**
-   * Obtiene el icono del status
+   * Obtiene el icono del status según el estado de la aplicación
    */
   getStatusIcon(): string {
-    return 'info';
+    let statusIcon = 'info';
+    this.applicationStatus$.subscribe(status => {
+      switch (status) {
+        case 'error':
+          statusIcon = 'error';
+          break;
+        case 'completed':
+          statusIcon = 'check_circle';
+          break;
+        case 'waiting_approval':
+          statusIcon = 'schedule';
+          break;
+        case 'running':
+          statusIcon = 'sync';
+          break;
+        case 'initializing':
+          statusIcon = 'hourglass_empty';
+          break;
+        default:
+          statusIcon = 'info';
+          break;
+      }
+    }).unsubscribe();
+    return statusIcon;
   }
   
   /**
-   * Obtiene el texto del status
+   * Obtiene el texto del status según el estado de la aplicación
    */
   getStatusText(): string {
-    return 'Procesando...';
+    let statusText = 'Procesando...';
+    this.applicationStatus$.subscribe(status => {
+      switch (status) {
+        case 'error':
+          statusText = 'Proceso terminado con error';
+          break;
+        case 'completed':
+          statusText = 'Proceso completado exitosamente';
+          break;
+        case 'waiting_approval':
+          statusText = 'Esperando tu aprobación...';
+          break;
+        case 'running':
+          statusText = 'Procesando...';
+          break;
+        case 'initializing':
+          statusText = 'Iniciando proceso...';
+          break;
+        case 'idle':
+        default:
+          statusText = 'Listo para iniciar';
+          break;
+      }
+    }).unsubscribe();
+    return statusText;
   }
 }

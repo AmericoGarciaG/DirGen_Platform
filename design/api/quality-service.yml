@@ -1,0 +1,95 @@
+openapi: 3.0.0
+info:
+  title: Quality Service API
+  version: v1
+  description: API definition for the data quality service component.
+
+servers:
+  - url: http://localhost:8002 # Replace with the actual URL
+    description: Local development server
+
+paths:
+  /validate:
+    post:
+      summary: Validate data endpoint
+      description: Validates incoming data and routes it to appropriate queues.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ticker:
+                  type: string
+                  example: AAPL
+                open:
+                  type: number
+                  format: float
+                  example: 150.00
+                high:
+                  type: number
+                  format: float
+                  example: 152.00
+                low:
+                  type: number
+                  format: float
+                  example: 149.00
+                close:
+                  type: number
+                  format: float
+                  example: 151.00
+                volume:
+                  type: integer
+                  example: 1000000
+                timestamp:
+                  type: string
+                  format: date-time
+                  example: '2024-01-01T00:00:00Z'
+      responses:
+        '200':
+          description: Data validated and routed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: validated
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Returns the health status of the component.
+      responses:
+        '200':
+          description: Component is healthy.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: Error code.
+          example: 400
+        message:
+          type: string
+          description: Error message.
+          example: 'Bad Request'

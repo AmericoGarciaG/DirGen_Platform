@@ -170,8 +170,8 @@ async def agent_task_complete(run_id: str, request: Request):
                 }
             })
         else:
-            # Fase 0 completada exitosamente - iniciar Fase 1
-            logger.info(f"RequirementsAgent completed successfully for {run_id}. Starting Phase 1.")
+            # Fase 0 completada exitosamente - ESPERAR APROBACIÓN
+            logger.info(f"RequirementsAgent completed successfully for {run_id}. WAITING FOR USER APPROVAL before starting Phase 1.")
             
             if summary:
                 await manager.broadcast(run_id, {
@@ -193,31 +193,24 @@ async def agent_task_complete(run_id: str, request: Request):
                 }
             })
             
+            # CRÍTICO: Establecer estado de espera de aprobación para INICIAR FASE 1 (Diseño)
+            APPROVAL_STATES[run_id] = "waiting_design_phase_approval"
+            
+            # Enviar mensaje para solicitar aprobación de INICIAR Fase de Diseño
             await manager.broadcast(run_id, {
                 "source": "Orchestrator", 
-                "type": "info", 
-                "data": {"message": "Iniciando Fase 1: Diseño con el PCCE generado..."}
+                "type": "design_phase_approval_request", 
+                "run_id": run_id,
+                "data": {
+                    "message": "PCCE generado exitosamente a partir del SVAD. ¿Deseas iniciar la Fase de Diseño para construir el proyecto?",
+                    "phase_completed": "requirements",
+                    "phase_requested": "design",
+                    "status": "awaiting_approval",
+                    "next_action": "start_design_phase"
+                }
             })
             
-            # Leer el PCCE generado y iniciar Fase 1
-            temp_dir = tempfile.gettempdir()
-            temp_pcce_path = os.path.join(temp_dir, f"{run_id}_pcce.yml")
-            
-            if os.path.exists(temp_pcce_path):
-                with open(temp_pcce_path, "rb") as f:
-                    pcce_content = f.read()
-                asyncio.create_task(run_phase_1_design(run_id, pcce_content))
-            else:
-                logger.error(f"PCCE generado no encontrado para {run_id}")
-                await manager.broadcast(run_id, {
-                    "source": "Orchestrator", 
-                    "type": "phase_end", 
-                    "data": {
-                        "name": "Análisis de Requerimientos", 
-                        "status": "RECHAZADO", 
-                        "reason": "PCCE generado no encontrado"
-                    }
-                })
+            logger.info(f"Requirements Phase 0 complete. Design phase approval request sent for {run_id}. Waiting for user response to start Phase 1.")
     
     # --- FASE 1: PLANNER AGENT ---
     elif agent_role == "planner":
@@ -274,25 +267,28 @@ async def agent_task_complete(run_id: str, request: Request):
                 })
                 logger.info(f"Executive summary sent to TUI for {run_id}")
             
-            # EN LUGAR DE PROCEDER DIRECTAMENTE, ESPERAR APROBACIÓN
-            logger.info(f"Planner completed successfully for {run_id}. Waiting for user approval.")
+            # Planner Agent completado - ESTE ES EL VERDADERO PLAN DE EJECUCIÓN
+            logger.info(f"Planner completed successfully for {run_id}. Execution plan generated. Waiting for user approval.")
             
-            # Establecer estado de espera de aprobación
-            APPROVAL_STATES[run_id] = "waiting_approval"
+            # Establecer estado de espera de aprobación para EJECUTAR el plan
+            APPROVAL_STATES[run_id] = "waiting_execution_approval"
             
-            # Enviar mensaje de plan generado para solicitar aprobación
+            # Enviar mensaje de plan de ejecución generado para solicitar aprobación
             await manager.broadcast(run_id, {
                 "source": "Orchestrator", 
                 "type": "plan_generated", 
                 "run_id": run_id,
                 "data": {
-                    "message": "Plan de ejecución generado exitosamente. Se requiere aprobación manual para continuar.",
+                    "message": "Plan de ejecución detallado generado exitosamente. ¿Deseas proceder con la ejecución del plan?",
+                    "phase_completed": "design_planning",
+                    "phase_requested": "execution",
                     "tasks": data.get("tasks", []),  # Si el agente envía las tareas
-                    "status": "awaiting_approval"
+                    "status": "awaiting_approval",
+                    "next_action": "execute_plan"
                 }
             })
             
-            logger.info(f"Plan approval request sent for {run_id}. Waiting for user response.")
+            logger.info(f"Execution plan approval request sent for {run_id}. Waiting for user response.")
 
     return {"status": "acknowledged"}
 
@@ -323,71 +319,131 @@ async def approve_plan(run_id: str, request: Request):
         logger.info(f"Plan approval request for {run_id}: approved={approved}, response='{user_response}'")
         
         # Verificar que el run esté en estado de espera de aprobación
-        if run_id not in APPROVAL_STATES or APPROVAL_STATES[run_id] != "waiting_approval":
-            logger.warning(f"Run {run_id} is not waiting for approval. Current state: {APPROVAL_STATES.get(run_id, 'unknown')}")
+        current_approval_state = APPROVAL_STATES.get(run_id, 'none')
+        if run_id not in APPROVAL_STATES or current_approval_state not in ["waiting_design_phase_approval", "waiting_execution_approval"]:
+            logger.warning(f"Run {run_id} is not waiting for approval. Current state: {current_approval_state}")
             raise HTTPException(
                 status_code=400, 
-                detail=f"Run {run_id} is not waiting for approval"
+                detail=f"Run {run_id} is not waiting for approval. Current state: {current_approval_state}"
             )
         
         if approved:
-            # Plan aprobado - proceder con la ejecución
-            logger.info(f"Plan approved for {run_id}. Proceeding with execution.")
+            # Determinar qué acción tomar según el estado de aprobación actual
+            logger.info(f"Approval received for {run_id} in state {current_approval_state}")
             
-            # Actualizar estado
-            APPROVAL_STATES[run_id] = "approved"
-            
-            # Notificar aprobación
-            await manager.broadcast(run_id, {
-                "source": "Orchestrator",
-                "type": "plan_approved",
-                "run_id": run_id,
-                "data": {
-                    "message": f"Plan aprobado por el usuario. Iniciando ejecución...",
-                    "user_response": user_response,
-                    "timestamp": datetime.now().isoformat()
-                }
-            })
-            
-            # Proceder con Quality Gate 1 (validación)
-            await manager.broadcast(run_id, {
-                "source": "Orchestrator", 
-                "type": "info", 
-                "data": {"message": "Plan aprobado. Iniciando Quality Gate 1 (Validación)..."}
-            })
-            
-            # Leer el PCCE y iniciar validación
+            # Leer el PCCE
             temp_dir = tempfile.gettempdir()
             temp_pcce_path = os.path.join(temp_dir, f"{run_id}_pcce.yml")
             
-            if os.path.exists(temp_pcce_path):
-                with open(temp_pcce_path, "rb") as f:
-                    pcce_content = f.read()
-                asyncio.create_task(run_quality_gate_1(run_id, pcce_content))
-            else:
+            if not os.path.exists(temp_pcce_path):
                 logger.error(f"PCCE file not found for {run_id}")
                 await manager.broadcast(run_id, {
                     "source": "Orchestrator",
                     "type": "phase_end",
                     "data": {
-                        "name": "Diseño",
+                        "name": "Aprobación",
                         "status": "RECHAZADO",
-                        "reason": "Archivo PCCE no encontrado para validación"
+                        "reason": "Archivo PCCE no encontrado"
                     }
                 })
+                return {"status": "error", "message": "PCCE file not found", "run_id": run_id}
+                
+            with open(temp_pcce_path, "rb") as f:
+                pcce_content = f.read()
             
-            return {
-                "status": "approved",
-                "message": "Plan approved and execution started",
-                "run_id": run_id
-            }
+            # CASO 1: Aprobación para INICIAR Fase de Diseño
+            if current_approval_state == "waiting_design_phase_approval":
+                logger.info(f"Starting Phase 1: Design Planning for {run_id} (user approved design phase)")
+                
+                # Actualizar estado
+                APPROVAL_STATES[run_id] = "design_approved"
+                
+                # Notificar aprobación
+                await manager.broadcast(run_id, {
+                    "source": "Orchestrator",
+                    "type": "plan_approved",
+                    "run_id": run_id,
+                    "data": {
+                        "message": f"Fase de Diseño aprobada por el usuario. Iniciando planificación detallada...",
+                        "user_response": user_response,
+                        "phase_approved": "design",
+                        "timestamp": datetime.now().isoformat()
+                    }
+                })
+                
+                # Iniciar Fase 1: Diseño con PlannerAgent
+                await manager.broadcast(run_id, {
+                    "source": "Orchestrator", 
+                    "type": "info", 
+                    "data": {"message": "Iniciando Fase 1: Planificación detallada con el PCCE generado..."}
+                })
+                asyncio.create_task(run_phase_1_design(run_id, pcce_content))
+                
+                return {
+                    "status": "approved",
+                    "message": "Design phase approved, starting Phase 1 planning",
+                    "run_id": run_id
+                }
+            
+            # CASO 2: Aprobación para EJECUTAR el Plan
+            elif current_approval_state == "waiting_execution_approval":
+                logger.info(f"Starting execution for {run_id} (user approved execution plan)")
+                
+                # Actualizar estado
+                APPROVAL_STATES[run_id] = "execution_approved"
+                
+                # Notificar aprobación
+                await manager.broadcast(run_id, {
+                    "source": "Orchestrator",
+                    "type": "plan_approved",
+                    "run_id": run_id,
+                    "data": {
+                        "message": f"Plan de ejecución aprobado por el usuario. Iniciando validación...",
+                        "user_response": user_response,
+                        "phase_approved": "execution",
+                        "timestamp": datetime.now().isoformat()
+                    }
+                })
+                
+                # Iniciar Quality Gate 1 (validación)
+                await manager.broadcast(run_id, {
+                    "source": "Orchestrator", 
+                    "type": "info", 
+                    "data": {"message": "Plan de ejecución aprobado. Iniciando Quality Gate 1 (Validación)..."}
+                })
+                asyncio.create_task(run_quality_gate_1(run_id, pcce_content))
+                
+                return {
+                    "status": "approved",
+                    "message": "Execution plan approved, starting validation",
+                    "run_id": run_id
+                }
+            
+            else:
+                logger.error(f"Unknown approval state for {run_id}: {current_approval_state}")
+                return {
+                    "status": "error",
+                    "message": f"Unknown approval state: {current_approval_state}",
+                    "run_id": run_id
+                }
             
         else:
-            # Plan rechazado
-            logger.info(f"Plan rejected for {run_id}. User response: '{user_response}'")
+            # Plan/Fase rechazado
+            logger.info(f"Rejection received for {run_id} in state {current_approval_state}. User response: '{user_response}'")
             
             # Actualizar estado
             APPROVAL_STATES[run_id] = "rejected"
+            
+            # Determinar qué se rechazó según el estado
+            if current_approval_state == "waiting_design_phase_approval":
+                phase_name = "Fase de Diseño"
+                rejection_message = f"Fase de Diseño rechazada por el usuario: {user_response}"
+            elif current_approval_state == "waiting_execution_approval":
+                phase_name = "Plan de Ejecución"
+                rejection_message = f"Plan de ejecución rechazado por el usuario: {user_response}"
+            else:
+                phase_name = "Proceso"
+                rejection_message = f"Proceso rechazado por el usuario: {user_response}"
             
             # Notificar rechazo
             await manager.broadcast(run_id, {
@@ -395,8 +451,9 @@ async def approve_plan(run_id: str, request: Request):
                 "type": "plan_rejected",
                 "run_id": run_id,
                 "data": {
-                    "message": f"Plan rechazado por el usuario: {user_response}",
+                    "message": rejection_message,
                     "user_response": user_response,
+                    "phase_rejected": current_approval_state.replace("waiting_", "").replace("_approval", ""),
                     "timestamp": datetime.now().isoformat()
                 }
             })
@@ -406,9 +463,9 @@ async def approve_plan(run_id: str, request: Request):
                 "source": "Orchestrator",
                 "type": "phase_end",
                 "data": {
-                    "name": "Diseño",
+                    "name": phase_name,
                     "status": "RECHAZADO",
-                    "reason": f"Plan rechazado por el usuario: {user_response}"
+                    "reason": rejection_message
                 }
             })
             
@@ -418,7 +475,7 @@ async def approve_plan(run_id: str, request: Request):
             
             return {
                 "status": "rejected",
-                "message": "Plan rejected by user",
+                "message": f"{phase_name} rejected by user",
                 "run_id": run_id
             }
             

@@ -50,38 +50,53 @@
         <div class="files-list">
           <ng-container *ngIf="contextFiles$ | async as contextFiles">
             
-            <!-- Files List -->
-            <mat-list *ngIf="contextFiles.length > 0; else noContextFiles">
-              <mat-list-item 
+            <!-- Files Cards (Improved Design) -->
+            <div *ngIf="contextFiles.length > 0; else noContextFiles" class="files-grid">
+              <div 
                 *ngFor="let file of contextFiles; trackBy: trackByFileId"
-                class="file-item">
+                class="file-card context-file-card">
                 
-                <mat-icon matListItemIcon [class]="'file-icon ' + getFileTypeColor(file.type)">
-                  {{ getFileIcon(file.name) }}
-                </mat-icon>
+                <!-- File Icon and Type Badge -->
+                <div class="file-card-header">
+                  <mat-icon class="file-card-icon" [style.color]="getFileTypeColorValue(file.type)">
+                    {{ getFileIcon(file.name) }}
+                  </mat-icon>
+                  <mat-chip 
+                    [color]="getFileTypeColor(file.type)"
+                    class="file-type-badge">
+                    {{ file.type.toUpperCase() }}
+                  </mat-chip>
+                </div>
                 
-                <div matListItemTitle class="file-details">
-                  <div class="file-name">{{ file.name }}</div>
-                  <div class="file-meta">
-                    <mat-chip 
-                      [color]="getFileTypeColor(file.type)"
-                      class="file-type-chip">
-                      {{ file.type.toUpperCase() }}
-                    </mat-chip>
-                    <span class="file-size">{{ formatFileSize(file.size) }}</span>
-                    <span class="file-date">{{ formatTimestamp(file.uploadedAt) }}</span>
+                <!-- File Name -->
+                <div class="file-card-title" [title]="file.name">
+                  {{ file.name }}
+                </div>
+                
+                <!-- File Metadata -->
+                <div class="file-card-metadata">
+                  <div class="metadata-item">
+                    <mat-icon class="metadata-icon">data_usage</mat-icon>
+                    <span>{{ formatFileSize(file.size) }}</span>
+                  </div>
+                  <div class="metadata-item">
+                    <mat-icon class="metadata-icon">schedule</mat-icon>
+                    <span>{{ formatTimestamp(file.uploadedAt) }}</span>
                   </div>
                 </div>
                 
-                <button 
-                  mat-icon-button 
-                  matListItemMeta
-                  (click)="removeContextFile(file.id)"
-                  matTooltip="Eliminar archivo">
-                  <mat-icon>delete</mat-icon>
-                </button>
-              </mat-list-item>
-            </mat-list>
+                <!-- Actions -->
+                <div class="file-card-actions">
+                  <button 
+                    mat-icon-button 
+                    (click)="removeContextFile(file.id)"
+                    matTooltip="Eliminar archivo"
+                    class="remove-button">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
+              </div>
+            </div>
             
             <!-- Empty State -->
             <ng-template #noContextFiles>

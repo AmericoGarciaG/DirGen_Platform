@@ -38,6 +38,42 @@
       width: 16px;
       height: 16px;
     }
+    
+    // Error state styling
+    &.error-status {
+      color: #f44336;
+      
+      .error-details {
+        margin-top: 4px;
+        width: 100%;
+        
+        .error-message {
+          display: block;
+          font-size: 11px;
+          opacity: 0.8;
+          line-height: 1.3;
+          max-width: 100%;
+          word-wrap: break-word;
+        }
+      }
+    }
+    
+    // Completed state styling
+    &.completed-status {
+      color: #4caf50;
+    }
+  }
+  
+  // Error state background
+  &:has(.error-status) {
+    background: rgba(244, 67, 54, 0.1);
+    border-bottom-color: rgba(244, 67, 54, 0.3);
+  }
+  
+  // Completed state background
+  &:has(.completed-status) {
+    background: rgba(76, 175, 80, 0.1);
+    border-bottom-color: rgba(76, 175, 80, 0.3);
   }
 }
 
@@ -64,7 +100,7 @@
     
     mat-chip {
       background: rgba(0, 122, 204, 0.2);
-      color: #007acc;
+      color: #4da6ff; // Brighter blue for better readability
       font-size: 11px;
       max-width: 100%; // FIXED: Prevent individual chips from overflowing
       
@@ -74,15 +110,29 @@
         text-overflow: ellipsis;
         white-space: nowrap;
         max-width: 200px;
+        color: #66b3ff; // Even brighter for the filename text
+      }
+      
+      // Specific styling for filename
+      .filename {
+        color: #66b3ff !important;
+        font-weight: 500;
+        margin: 0 4px;
+        display: inline-block;
+        max-width: 150px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       
       .file-size {
-        opacity: 0.7;
+        opacity: 0.8; // Slightly more opaque for better readability
         margin-left: 4px;
+        color: #80c7ff; // Lighter color for file size
       }
       
       mat-icon {
-        color: #007acc;
+        color: #4da6ff; // Match the chip text color
       }
     }
   }

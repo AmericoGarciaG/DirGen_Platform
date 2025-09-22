@@ -69,7 +69,7 @@ export interface PlanState {
 
 export interface ApplicationState {
   // Estado general de la aplicación
-  status: 'idle' | 'initializing' | 'running' | 'waiting_approval' | 'error';
+  status: 'idle' | 'initializing' | 'running' | 'waiting_approval' | 'completed' | 'error';
   
   // Información del run actual
   currentRunId: string | null;

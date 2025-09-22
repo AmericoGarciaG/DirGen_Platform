@@ -3,12 +3,13 @@ import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { WebSocketState, DirgenMessage } from '../../../../shared/models/dirgen.models';
 
 @Component({
   selector: 'app-live-event-log',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatIconModule, MatChipsModule],
+  imports: [CommonModule, MatCardModule, MatIconModule, MatChipsModule, MatExpansionModule],
   templateUrl: './live-event-log.component.html',
   styleUrls: ['./live-event-log.component.scss']
 })
@@ -143,11 +144,13 @@ export class LiveEventLogComponent implements OnChanges, AfterViewChecked {
         
       // Nuevos tipos de mensaje para el flujo de aprobación
       case 'plan_generated':
+        const planMessage = (message as any).data?.message || (message as any).message;
+        const defaultQuestion = '¿El plan ha sido generado. ¿Deseas proceder con la ejecución?';
         return {
-          icon: '📋',
-          color: '#ff9800',
-          text: `Plan generado: ${(message as any).data?.message || 'Se ha generado un plan de ejecución'}`,
-          source
+          icon: '🤖',
+          color: '#ff6b35',
+          text: `Sistema: ${planMessage || defaultQuestion}`,
+          source: 'Orquestador'
         };
         
       case 'plan_approved':
@@ -240,5 +243,96 @@ export class LiveEventLogComponent implements OnChanges, AfterViewChecked {
   truncateText(text: string, maxLength: number = 200): string {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
+  }
+
+  /**
+   * Genera un resumen corto para el panel colapsado
+   */
+  getMessageSummary(message: any): string {
+    const parsed = this.parseMessage(message);
+    const maxLength = 80;
+    
+    // Para mensajes cortos, devolver el texto completo
+    if (parsed.text.length <= maxLength) {
+      return parsed.text;
+    }
+    
+    // Para mensajes largos, crear un resumen más inteligente
+    const firstSentence = parsed.text.split(/[.!?]/, 1)[0];
+    if (firstSentence.length > 0 && firstSentence.length <= maxLength) {
+      return firstSentence + '...';
+    }
+    
+    // Fallback: truncar por caracteres
+    return parsed.text.substring(0, maxLength) + '...';
+  }
+
+  /**
+   * Determina si un mensaje debe ser expandible
+   */
+  isMessageExpandable(message: any): boolean {
+    const parsed = this.parseMessage(message);
+    
+    // Expandible si el texto es largo
+    if (parsed.text.length > 80) return true;
+    
+    // Expandible si es un mensaje de tipo debug/error que incluye JSON
+    if (parsed.icon === '❓' || message.type === 'error') return true;
+    
+    // Expandible si incluye datos estructurados adicionales
+    if (this.hasDataProperty(message) && this.getMessageData(message)) {
+      const data = this.getMessageData(message);
+      if (data && Object.keys(data).length > 0) return true;
+    }
+    
+    return false;
+  }
+
+  /**
+   * Formatea valores de datos adicionales para visualización
+   */
+  formatDataValue(value: any): string {
+    if (value === null || value === undefined) {
+      return 'N/A';
+    }
+    
+    if (typeof value === 'object') {
+      return JSON.stringify(value, null, 2);
+    }
+    
+    if (typeof value === 'boolean') {
+      return value ? 'Sí' : 'No';
+    }
+    
+    return String(value);
+  }
+
+  /**
+   * Helper para usar Object.entries en el template
+   */
+  readonly Object = Object;
+
+  /**
+   * Type guard para verificar si un mensaje tiene la propiedad data
+   */
+  hasDataProperty(message: any): message is DirgenMessage & { data?: any } {
+    return message && typeof message === 'object' && 'data' in message;
+  }
+
+  /**
+   * Obtiene de forma segura la propiedad data de un mensaje
+   */
+  getMessageData(message: any): any | null {
+    if (!this.hasDataProperty(message)) return null;
+    return (message as any).data || null;
+  }
+
+  /**
+   * Obtiene las entradas de data de forma segura para el template
+   */
+  getDataEntries(message: any): [string, any][] {
+    const data = this.getMessageData(message);
+    if (!data || typeof data !== 'object') return [];
+    return Object.entries(data);
   }
 }
