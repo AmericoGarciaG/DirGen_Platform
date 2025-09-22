@@ -66,3 +66,12 @@ docs/RUTA_INVALIDA_CORRECCION.md
 docs/PROTOCOL_REFACTORING_SUMMARY.md
 docs/SDLC_PROGRESS_BAR_IMPLEMENTATION.md
 docs/DESARROLLO_ETAPAS_2_Y_3.md
+logs/agents/planner/planner_agent.log
+logs/agents/requirements/requirements_agent.log
+logs/agents/validator/validator_agent.log
+logs/client/client.log
+logs/core/core_logging_init.log
+logs/core/core_test_component.log
+logs/orchestrator/orchestrator.log
+docs/LOGGING_SYSTEM_README.md
+docs/GUIA_COMPARACION_LOGS.md

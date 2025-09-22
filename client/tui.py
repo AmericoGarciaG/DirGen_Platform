@@ -15,20 +15,45 @@ import os
 from typing import Optional
 
 # --- Configuración del Logger ---
-LOG_DIR = Path(__file__).parent / "logs"
-LOG_DIR.mkdir(exist_ok=True)
-LOG_FILE = LOG_DIR / f"tui_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-
-# Configurar el logger
-logger = logging.getLogger("DirGenTUI")
-logger.setLevel(logging.DEBUG)
-
-# Handler para archivo - SOLO archivo, no consola para evitar doble salida en TUI
-file_handler = logging.FileHandler(LOG_FILE, encoding='utf-8')
-file_handler.setLevel(logging.DEBUG)
-file_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(file_format)
-logger.addHandler(file_handler)
+# Intentar usar logging centralizado, mantener sistema existente como fallback
+try:
+    from pathlib import Path
+    import sys
+    project_root = Path(__file__).parent.parent
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    
+    from dirgen_core.logging_config import get_client_logger, LogLevel
+    logger = get_client_logger(LogLevel.DEBUG)
+    
+    # Mantener compatibilidad con logs antiguos
+    OLD_LOG_DIR = Path(__file__).parent / "logs"
+    OLD_LOG_DIR.mkdir(exist_ok=True)
+    OLD_LOG_FILE = OLD_LOG_DIR / f"tui_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+    
+    # Handler adicional para mantener formato existente en directorio viejo
+    old_file_handler = logging.FileHandler(OLD_LOG_FILE, encoding='utf-8')
+    old_file_handler.setLevel(logging.DEBUG)
+    old_file_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    old_file_handler.setFormatter(old_file_format)
+    logger.addHandler(old_file_handler)
+    
+except ImportError:
+    # Fallback al sistema anterior
+    LOG_DIR = Path(__file__).parent / "logs"
+    LOG_DIR.mkdir(exist_ok=True)
+    LOG_FILE = LOG_DIR / f"tui_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+    
+    # Configurar el logger
+    logger = logging.getLogger("DirGenTUI")
+    logger.setLevel(logging.DEBUG)
+    
+    # Handler para archivo - SOLO archivo, no consola para evitar doble salida en TUI
+    file_handler = logging.FileHandler(LOG_FILE, encoding='utf-8')
+    file_handler.setLevel(logging.DEBUG)
+    file_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(file_format)
+    logger.addHandler(file_handler)
 
 # NO agregar console handler - el TUI maneja la salida visual
 

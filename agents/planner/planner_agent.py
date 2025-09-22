@@ -12,8 +12,21 @@ import yaml
 from dotenv import load_dotenv
 
 # --- Configuración y Herramientas ---
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - AGENT(Planner) - %(message)s')
-logger = logging.getLogger("PLANNER_AGENT")
+# Intentar usar logging centralizado, fallback a configuración básica
+try:
+    from pathlib import Path
+    project_root = Path(__file__).parent.parent.parent
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    
+    from dirgen_core.logging_config import get_agent_logger, LogicBookLogger, LogLevel
+    logger = get_agent_logger("planner", LogLevel.DEBUG)
+    logic_logger = LogicBookLogger()
+except ImportError:
+    # Fallback a configuración básica
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - AGENT(Planner) - %(message)s')
+    logger = logging.getLogger("PLANNER_AGENT")
+    logic_logger = None
 load_dotenv()
 
 # Importar el servicio central de IA
@@ -518,6 +531,13 @@ def main():
     try:
         # --- NUEVA LÍNEA: Reporte de Vida ---
         report_progress(args.run_id, "info", {"message": "Agente Planificador iniciado y listo para trabajar."})
+        
+        # Log inicio del agente según Logic Book
+        if logic_logger:
+            logic_logger.log_agent_action(
+                logger, args.run_id, "Planner", "AGENT_START", 
+                {'pcce_path': args.pcce_path, 'feedback': bool(args.feedback), 'chapter': 'CAP-3'}
+            )
 
         # Cargar el contrato PCCE
         with open(args.pcce_path, 'r', encoding='utf-8') as f:
@@ -570,6 +590,13 @@ def main():
             initial_plan = generate_initial_plan(args.run_id, model_id, pcce_data, salidas_esperadas, agent_profile)
             current_plan = initial_plan
             
+            # Log generación de plan según Logic Book
+            if logic_logger:
+                logic_logger.log_agent_action(
+                    logger, args.run_id, "Planner", "STRATEGIC_PLAN_GENERATED",
+                    {'plan_tasks': len(current_plan), 'model': model_id, 'chapter': 'CAP-3'}
+                )
+            
             # Reportar plan inicial al orquestador
             report_progress(args.run_id, "plan_generated", {
                 "plan": current_plan,
@@ -581,6 +608,12 @@ def main():
             report_progress(args.run_id, "info", {
                 "message": f"📋 [Planner Agent] Plan estratégico creado con {len(current_plan)} tareas principales"
             })
+            
+            # Log completación de planificación según Logic Book
+            if logic_logger:
+                logic_logger.log_phase_transition(
+                    logger, args.run_id, "PLANNING", "EXECUTION", "CAP-3"
+                )
             
         # ===== FIN DE FASE DE PLANIFICACIÓN =====
             
@@ -938,6 +971,27 @@ Cuando hayas creado TODOS los archivos requeridos, tu último pensamiento debe c
                         archivo_path = action_json['args'].get('path', '')
                         archivos_creados.add(archivo_path)
                         logger.info(f"Archivo creado exitosamente: {archivo_path}")
+                        
+                        # Log generación de artefacto según Logic Book
+                        if logic_logger:
+                            # Determinar tipo de artefacto
+                            if archivo_path.endswith('.puml'):
+                                artifact_type = "ARCHITECTURE_DIAGRAM"
+                            elif archivo_path.endswith('.yml') and '/api/' in archivo_path:
+                                artifact_type = "API_SPECIFICATION"
+                            else:
+                                artifact_type = "DESIGN_ARTIFACT"
+                            
+                            logic_logger.log_artifact_generation(
+                                logger, args.run_id, artifact_type, archivo_path, success=True
+                            )
+                    else:
+                        # Log fallo en generación de artefacto
+                        if logic_logger:
+                            archivo_path = action_json['args'].get('path', '')
+                            logic_logger.log_artifact_generation(
+                                logger, args.run_id, "DESIGN_ARTIFACT", archivo_path, success=False
+                            )
                 except:
                     pass  # Si no puede parsear la observación, continuar
                 
@@ -1057,6 +1111,12 @@ Cuando hayas creado TODOS los archivos requeridos, tu último pensamiento debe c
                                            }, timeout=10)
                     response.raise_for_status()
                     logger.info("Tarea finalizada exitosamente con resumen ejecutivo.")
+                    
+                    # Log completación exitosa según Logic Book
+                    if logic_logger:
+                        logic_logger.log_phase_transition(
+                            logger, args.run_id, "DESIGN", "COMPLETED", "CAP-3"
+                        )
                 except requests.RequestException as e:
                     logger.error(f"Error enviando notificación final con resumen: {str(e)}")
                     # Fallback a notificación simple
@@ -1093,6 +1153,14 @@ Cuando hayas creado TODOS los archivos requeridos, tu último pensamiento debe c
             
     except Exception as e:
         logger.error(f"Error crítico en el agente planificador: {str(e)}")
+        
+        # Log error crítico según Logic Book
+        if logic_logger:
+            logic_logger.log_agent_action(
+                logger, args.run_id, "Planner", "CRITICAL_ERROR",
+                {'error': str(e), 'chapter': 'CAP-3'}
+            )
+        
         report_progress(args.run_id, "error", {"message": f"Error crítico: {str(e)}"})
 
 if __name__ == "__main__":

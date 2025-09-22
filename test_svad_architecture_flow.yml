@@ -1,0 +1,51 @@
+meta:
+  svad_version: "1.0"
+  project_name: "Sistema de Prueba Arquitectura"
+  author: "DirGen Testing"
+  creation_date: "2024-12-22"
+  description: "Archivo SVAD de prueba para validar el flujo de aprobación del plan de arquitectura"
+
+vision:
+  business_problem: "Necesitamos un sistema web simple para gestionar tareas"
+  target_users: 
+    - "Desarrolladores que necesitan gestionar sus tareas diarias"
+    - "Equipos pequeños de desarrollo"
+  success_criteria:
+    - "Los usuarios pueden crear, leer, actualizar y eliminar tareas"
+    - "La interfaz es intuitiva y responsiva"
+    - "El sistema es confiable y rápido"
+
+solution:
+  approach: "Desarrollo de una aplicación web usando tecnologías modernas"
+  key_features:
+    - "CRUD completo de tareas"
+    - "Interfaz web responsiva"
+    - "API REST para operaciones"
+    - "Base de datos para persistencia"
+  constraints:
+    - "Debe ser una aplicación web"
+    - "Debe usar tecnologías estándar"
+    - "Debe ser fácil de desplegar"
+
+architecture:
+  high_level_design: "Arquitectura de 3 capas con frontend web, API REST y base de datos"
+  components:
+    - name: "Frontend Web"
+      description: "Interfaz de usuario web responsiva"
+      responsibilities: ["UI/UX", "Validación del lado cliente", "Comunicación con API"]
+    - name: "API REST"
+      description: "Servicio backend para lógica de negocio"  
+      responsibilities: ["Lógica de negocio", "Validación de datos", "Comunicación con BD"]
+    - name: "Base de Datos"
+      description: "Almacenamiento persistente de datos"
+      responsibilities: ["Persistencia", "Consultas", "Integridad de datos"]
+
+deliverables:
+  primary:
+    - "Aplicación web funcional"
+    - "Código fuente documentado"
+    - "Tests unitarios e integración"
+  secondary:
+    - "Manual de usuario"
+    - "Documentación de API"
+    - "Guía de despliegue"

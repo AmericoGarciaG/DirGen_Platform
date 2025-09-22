@@ -16,6 +16,17 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from websockets.exceptions import ConnectionClosed
 
+# Importar sistema de logging centralizado
+try:
+    from dirgen_core.logging_config import get_orchestrator_logger, LogicBookLogger, LogLevel
+    logger = get_orchestrator_logger(LogLevel.DEBUG)
+    logic_logger = LogicBookLogger()
+except ImportError:
+    # Fallback si no está disponible el logging centralizado
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logger = logging.getLogger("ORCHESTRATOR")
+    logic_logger = None
+
 # --- Enumeración de Estados de Run ---
 class RunStatus(Enum):
     """Estados posibles para un Run según el flujo del Logic Book"""
@@ -37,8 +48,6 @@ class RunStatus(Enum):
     CANCELLED = "cancelled"
 
 # --- Configuración y Estado ---
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger("ORCHESTRATOR")
 app = FastAPI(title="DirGen Orchestrator")
 
 # Configurar CORS para permitir peticiones desde Tauri
@@ -127,8 +136,21 @@ async def set_run_status(run_id: str, status: RunStatus, metadata: dict = None):
         RunStatus.CANCELLED: "Cancelado"
     }
     
-    # Logging de transición de estado
-    logger.info(f"Run {run_id}: {previous_status.value} -> {status.value} ({status_display_names[status]})")
+    # Logging de transición de estado con contexto del Logic Book
+    if logic_logger:
+        logic_logger.log_state_change(
+            logger, 
+            run_id, 
+            status.value, 
+            phase=status_display_names[status],
+            metadata={
+                'previous_status': previous_status.value,
+                'chapter': 'CAP-1',  # Logic Book Capítulo 1 - Flujo de Estados
+                'retry_count': RUN_STATES[run_id]["retry_count"]
+            }
+        )
+    else:
+        logger.info(f"Run {run_id}: {previous_status.value} -> {status.value} ({status_display_names[status]})")
     
     # Crear mensaje WebSocket con formato específico
     websocket_message = {
@@ -163,6 +185,12 @@ async def run_phase_1_design(run_id: str, pcce_content: bytes, feedback: str = N
         metadata["message"] = f"Reiniciando fase de diseño con feedback: {feedback[:50]}..."
     await set_run_status(run_id, RunStatus.DESIGN_PROCESSING, metadata)
     
+    # Log transición de fase según Logic Book
+    if logic_logger:
+        logic_logger.log_phase_transition(
+            logger, run_id, "REQUIREMENTS", "DESIGN", "CAP-2"
+        )
+    
     await manager.broadcast(run_id, {"source": "Orchestrator", "type": "phase_start", "data": {"name": "Diseño"}})
     
     # CORREGIDO: usar ubicación relativa del proyecto para el PCCE
@@ -186,6 +214,14 @@ async def run_phase_1_design(run_id: str, pcce_content: bytes, feedback: str = N
     
     process = subprocess.Popen(agent_command)
     ACTIVE_PROCESSES[f"{run_id}_planner"] = process
+    
+    # Log acción de agente según Logic Book
+    if logic_logger:
+        logic_logger.log_agent_action(
+            logger, run_id, "Planner", "INVOKED", 
+            {'pid': process.pid, 'command': ' '.join(agent_command)}
+        )
+    
     await manager.broadcast(run_id, {"source": "Orchestrator", "type": "info", "data": {"message": f"Agente Planificador invocado (PID: {process.pid})..."}})
 
 async def run_quality_gate_1(run_id: str, pcce_content: bytes):
@@ -193,6 +229,12 @@ async def run_quality_gate_1(run_id: str, pcce_content: bytes):
     await set_run_status(run_id, RunStatus.VALIDATION_PROCESSING, {
         "message": "Iniciando validación de diseño con Validator Agent"
     })
+    
+    # Log Quality Gate según Logic Book
+    if logic_logger:
+        logic_logger.log_quality_gate(
+            logger, run_id, "DESIGN_VALIDATION", "STARTED", "Quality Gate 1 - Validación de Diseño iniciada"
+        )
     
     await manager.broadcast(run_id, {"source": "Orchestrator", "type": "quality_gate_start", "data": {"name": "Validación de Diseño"}})
 
@@ -212,6 +254,14 @@ async def run_quality_gate_1(run_id: str, pcce_content: bytes):
 
     process = subprocess.Popen(agent_command)
     ACTIVE_PROCESSES[f"{run_id}_validator"] = process
+    
+    # Log acción de agente según Logic Book
+    if logic_logger:
+        logic_logger.log_agent_action(
+            logger, run_id, "Validator", "INVOKED", 
+            {'pid': process.pid, 'command': ' '.join(agent_command)}
+        )
+    
     await manager.broadcast(run_id, {"source": "Orchestrator", "type": "info", "data": {"message": f"Agente Validador invocado (PID: {process.pid})..."}})
 
 # --- Lógica de Fase 0: Análisis de Requerimientos ---
@@ -221,6 +271,12 @@ async def run_phase_0_requirements(run_id: str, svad_content: bytes):
     await set_run_status(run_id, RunStatus.REQUIREMENTS_PROCESSING, {
         "message": "Iniciando análisis de requerimientos desde documento SVAD"
     })
+    
+    # Log transición de fase según Logic Book
+    if logic_logger:
+        logic_logger.log_phase_transition(
+            logger, run_id, "INITIAL", "REQUIREMENTS", "CAP-2"
+        )
     
     await manager.broadcast(run_id, {
         "source": "Orchestrator", 
@@ -240,6 +296,14 @@ async def run_phase_0_requirements(run_id: str, svad_content: bytes):
     
     process = subprocess.Popen(agent_command)
     ACTIVE_PROCESSES[f"{run_id}_requirements"] = process
+    
+    # Log acción de agente según Logic Book
+    if logic_logger:
+        logic_logger.log_agent_action(
+            logger, run_id, "Requirements", "INVOKED", 
+            {'pid': process.pid, 'svad_path': temp_svad_path}
+        )
+    
     await manager.broadcast(run_id, {
         "source": "Orchestrator", 
         "type": "info", 
@@ -265,6 +329,19 @@ async def initiate_from_svad(svad_file: UploadFile = File(...)):
     })
     
     logger.info(f"Iniciando Fase 0 (Análisis de Requerimientos) para {run_id}")
+    
+    # Log inicio de run según Logic Book
+    if logic_logger:
+        logger.info(
+            f"INICIO DE RUN: {run_id} - Fase 0: Análisis de Requerimientos",
+            extra={'logic_book_context': {
+                'run_id': run_id,
+                'phase': 'PHASE_0_REQUIREMENTS',
+                'chapter': 'CAP-2',
+                'event_type': 'RUN_INITIATED',
+                'svad_filename': svad_file.filename
+            }}
+        )
     
     # Iniciar Fase 0 asíncronamente
     asyncio.create_task(run_phase_0_requirements(run_id, svad_content))
@@ -347,24 +424,39 @@ async def agent_task_complete(run_id: str, request: Request):
                 }
             })
             
-            # CRÍTICO: Establecer estado de espera de aprobación para INICIAR FASE 1 (Diseño)
-            APPROVAL_STATES[run_id] = "waiting_design_phase_approval"
+            # CRÍTICO: Establecer estado de espera de aprobación del PLAN DE ARQUITECTURA
+            APPROVAL_STATES[run_id] = "waiting_architecture_plan_approval"
             
-            # Enviar mensaje para solicitar aprobación de INICIAR Fase de Diseño
+            # Log específico del Logic Book para la solicitud de VoBo del plan de arquitectura
+            logger.info(
+                f"SOLICITUD VOBO PLAN ARQUITECTURA: {run_id} - Esperando aprobación del usuario",
+                extra={'logic_book_context': {
+                    'run_id': run_id,
+                    'phase': 'PHASE_0_TO_1_TRANSITION',
+                    'chapter': 'CAP-3',
+                    'event_type': 'ARCHITECTURE_PLAN_APPROVAL_REQUEST',
+                    'user_action_required': 'VOBO_ARCHITECTURE_PLAN',
+                    'workflow_state': 'waiting_architecture_plan_approval'
+                }}
+            )
+            
+            # Enviar mensaje específico para solicitar aprobación del PLAN DE ARQUITECTURA
             await manager.broadcast(run_id, {
                 "source": "Orchestrator", 
-                "type": "design_phase_approval_request", 
+                "type": "architecture_plan_approval_request", 
                 "run_id": run_id,
                 "data": {
-                    "message": "PCCE generado exitosamente a partir del SVAD. ¿Deseas iniciar la Fase de Diseño para construir el proyecto?",
+                    "message": "PCCE generado exitosamente. Se requiere tu VoBo para generar el PLAN DE ARQUITECTURA detallado. ¿Apruebas proceder con la planificación arquitectónica del proyecto?",
                     "phase_completed": "requirements",
-                    "phase_requested": "design",
-                    "status": "awaiting_approval",
-                    "next_action": "start_design_phase"
+                    "phase_requested": "architecture_planning",
+                    "status": "awaiting_vobo",
+                    "next_action": "generate_architecture_plan",
+                    "approval_type": "architecture_plan",
+                    "user_decision_required": "Aprobar generación del plan de arquitectura detallado"
                 }
             })
             
-            logger.info(f"Requirements Phase 0 complete. Design phase approval request sent for {run_id}. Waiting for user response to start Phase 1.")
+            logger.info(f"Requirements Phase 0 complete. Architecture plan approval request sent for {run_id}. Waiting for user VoBo to generate architecture plan.")
     
     # --- FASE 1: PLANNER AGENT ---
     elif agent_role == "planner":
@@ -508,7 +600,7 @@ async def approve_plan(run_id: str, request: Request):
         
         # Verificar que el run esté en estado de espera de aprobación
         current_approval_state = APPROVAL_STATES.get(run_id, 'none')
-        if run_id not in APPROVAL_STATES or current_approval_state not in ["waiting_design_phase_approval", "waiting_execution_approval"]:
+        if run_id not in APPROVAL_STATES or current_approval_state not in ["waiting_architecture_plan_approval", "waiting_execution_approval"]:
             logger.warning(f"Run {run_id} is not waiting for approval. Current state: {current_approval_state}")
             raise HTTPException(
                 status_code=400, 
@@ -539,44 +631,57 @@ async def approve_plan(run_id: str, request: Request):
             with open(pcce_full_path, "rb") as f:
                 pcce_content = f.read()
             
-            # CASO 1: Aprobación para INICIAR Fase de Diseño
-            if current_approval_state == "waiting_design_phase_approval":
-                logger.info(f"Starting Phase 1: Design Planning for {run_id} (user approved design phase)")
+            # CASO 1: Aprobación para GENERAR Plan de Arquitectura
+            if current_approval_state == "waiting_architecture_plan_approval":
+                # Log específico del Logic Book para la aprobación del VoBo del plan de arquitectura
+                logger.info(
+                    f"VOBO PLAN ARQUITECTURA APROBADO: {run_id} - Usuario aprobó generar plan de arquitectura",
+                    extra={'logic_book_context': {
+                        'run_id': run_id,
+                        'phase': 'PHASE_1_ARCHITECTURE_PLANNING',
+                        'chapter': 'CAP-3', 
+                        'event_type': 'ARCHITECTURE_PLAN_APPROVED',
+                        'user_action': 'VOBO_APPROVED',
+                        'user_response': user_response,
+                        'workflow_state': 'generating_architecture_plan'
+                    }}
+                )
                 
                 # Establecer estado de requerimientos aprobados
                 await set_run_status(run_id, RunStatus.REQUIREMENTS_APPROVED, {
-                    "message": "Requerimientos aprobados por el usuario. Iniciando fase de diseño",
+                    "message": "Plan de arquitectura aprobado por el usuario. Iniciando generación del plan detallado",
                     "user_response": user_response,
-                    "phase_approved": "design"
+                    "phase_approved": "architecture_planning"
                 })
                 
                 # Actualizar estado (mantenido para compatibilidad)
-                APPROVAL_STATES[run_id] = "design_approved"
+                APPROVAL_STATES[run_id] = "architecture_plan_approved"
                 
                 # Notificar aprobación
                 await manager.broadcast(run_id, {
                     "source": "Orchestrator",
-                    "type": "plan_approved",
+                    "type": "architecture_plan_approved",
                     "run_id": run_id,
                     "data": {
-                        "message": f"Fase de Diseño aprobada por el usuario. Iniciando planificación detallada...",
+                        "message": f"Plan de arquitectura aprobado por el usuario. Generando plan detallado...",
                         "user_response": user_response,
-                        "phase_approved": "design",
+                        "phase_approved": "architecture_planning",
+                        "approval_type": "architecture_plan",
                         "timestamp": datetime.now().isoformat()
                     }
                 })
                 
-                # Iniciar Fase 1: Diseño con PlannerAgent
+                # Iniciar Fase 1: Generación del Plan de Arquitectura con PlannerAgent
                 await manager.broadcast(run_id, {
                     "source": "Orchestrator", 
                     "type": "info", 
-                    "data": {"message": "Iniciando Fase 1: Planificación detallada con el PCCE generado..."}
+                    "data": {"message": "Iniciando Fase 1: Generación del Plan de Arquitectura detallado con el PCCE..."}
                 })
                 asyncio.create_task(run_phase_1_design(run_id, pcce_content))
                 
                 return {
                     "status": "approved",
-                    "message": "Design phase approved, starting Phase 1 planning",
+                    "message": "Architecture plan approved, starting Phase 1 architecture planning",
                     "run_id": run_id
                 }
             
@@ -634,14 +739,28 @@ async def approve_plan(run_id: str, request: Request):
             logger.info(f"Rejection received for {run_id} in state {current_approval_state}. User response: '{user_response}'")
             
             # Determinar qué se rechazó según el estado y establecer estado apropiado
-            if current_approval_state == "waiting_design_phase_approval":
+            if current_approval_state == "waiting_architecture_plan_approval":
+                # Log específico del Logic Book para el rechazo del plan de arquitectura
+                logger.info(
+                    f"VOBO PLAN ARQUITECTURA RECHAZADO: {run_id} - Usuario rechazó generar plan de arquitectura",
+                    extra={'logic_book_context': {
+                        'run_id': run_id,
+                        'phase': 'PHASE_0_TO_1_TRANSITION',
+                        'chapter': 'CAP-3',
+                        'event_type': 'ARCHITECTURE_PLAN_REJECTED',
+                        'user_action': 'VOBO_REJECTED',
+                        'user_response': user_response,
+                        'workflow_state': 'architecture_plan_rejected'
+                    }}
+                )
+                
                 await set_run_status(run_id, RunStatus.REQUIREMENTS_REJECTED, {
-                    "message": "Requerimientos rechazados por el usuario",
+                    "message": "Plan de arquitectura rechazado por el usuario",
                     "user_response": user_response,
-                    "reason": f"Usuario rechazó los requerimientos: {user_response}"
+                    "reason": f"Usuario rechazó la generación del plan de arquitectura: {user_response}"
                 })
-                phase_name = "Fase de Diseño"
-                rejection_message = f"Fase de Diseño rechazada por el usuario: {user_response}"
+                phase_name = "Plan de Arquitectura"
+                rejection_message = f"Plan de arquitectura rechazado por el usuario: {user_response}"
             elif current_approval_state == "waiting_execution_approval":
                 await set_run_status(run_id, RunStatus.DESIGN_REJECTED, {
                     "message": "Plan de ejecución rechazado por el usuario",

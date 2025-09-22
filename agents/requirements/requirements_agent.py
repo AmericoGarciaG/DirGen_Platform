@@ -13,8 +13,22 @@ import yaml
 from dotenv import load_dotenv
 
 # --- Configuración y Herramientas ---
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - AGENT(Requirements) - %(message)s')
-logger = logging.getLogger("REQUIREMENTS_AGENT")
+# Intentar usar logging centralizado, fallback a configuración básica
+try:
+    import sys
+    from pathlib import Path
+    project_root = Path(__file__).parent.parent.parent
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    
+    from dirgen_core.logging_config import get_agent_logger, LogicBookLogger, LogLevel
+    logger = get_agent_logger("requirements", LogLevel.DEBUG)
+    logic_logger = LogicBookLogger()
+except ImportError:
+    # Fallback a configuración básica
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - AGENT(Requirements) - %(message)s')
+    logger = logging.getLogger("REQUIREMENTS_AGENT")
+    logic_logger = None
 load_dotenv()
 
 # Importar el servicio central de IA
@@ -157,7 +171,7 @@ SVAD_TEMPLATE = {
     ]
 }
 
-def validate_svad_structure(svad_content: str) -> dict:
+def validate_svad_structure(svad_content: str, run_id: str = None) -> dict:
     """Valida la estructura del documento SVAD"""
     validation_result = {
         "valid": True,
@@ -165,6 +179,13 @@ def validate_svad_structure(svad_content: str) -> dict:
         "warnings": [],
         "quality_score": 0
     }
+    
+    # Log inicio de validación según Logic Book
+    if logic_logger and run_id:
+        logic_logger.log_agent_action(
+            logger, run_id, "Requirements", "SVAD_VALIDATION_START", 
+            {'sections_to_check': len(SVAD_TEMPLATE["required_sections"])}
+        )
     
     # Verificar secciones requeridas
     for section in SVAD_TEMPLATE["required_sections"]:
@@ -181,6 +202,14 @@ def validate_svad_structure(svad_content: str) -> dict:
     total_sections = len(SVAD_TEMPLATE["required_sections"]) + len(SVAD_TEMPLATE["optional_sections"])
     found_sections = total_sections - len(validation_result["missing_sections"]) - len(validation_result["warnings"])
     validation_result["quality_score"] = int((found_sections / total_sections) * 100)
+    
+    # Log resultado de validación según Logic Book
+    if logic_logger and run_id:
+        result_status = "PASSED" if validation_result["valid"] else "FAILED"
+        logic_logger.log_quality_gate(
+            logger, run_id, "SVAD_STRUCTURE_VALIDATION", result_status,
+            f"Calidad: {validation_result['quality_score']}%, Secciones faltantes: {len(validation_result['missing_sections'])}"
+        )
     
     return validation_result
 
@@ -233,6 +262,13 @@ def main():
     logger.info(f"🚀 RequirementsAgent iniciado para {run_id}")
     logger.info(f"📋 Archivo SVAD: {svad_path}")
     
+    # Log inicio del agente según Logic Book
+    if logic_logger:
+        logic_logger.log_agent_action(
+            logger, run_id, "Requirements", "AGENT_START", 
+            {'svad_path': svad_path, 'chapter': 'CAP-2'}
+        )
+    
     try:
         # PASO 1: Leer y analizar el documento SVAD
         report_progress(run_id, "thought", {
@@ -254,7 +290,7 @@ def main():
             "content": "Validando la estructura del documento SVAD contra la plantilla estándar. Verificaré que contenga todas las secciones obligatorias: Resumen Ejecutivo, Actores y Casos de Uso, Requerimientos Funcionales, NFRs, Arquitectura y Stack Tecnológico."
         })
         
-        validation_result = validate_svad_structure(svad_content)
+        validation_result = validate_svad_structure(svad_content, run_id)
         
         if not validation_result["valid"]:
             # SVAD inválido - reportar error y terminar
@@ -264,6 +300,12 @@ def main():
             report_progress(run_id, "error", {"message": error_message})
             logger.error(error_message)
             
+            # Log falla de validación según Logic Book
+            if logic_logger:
+                logic_logger.log_phase_transition(
+                    logger, run_id, "REQUIREMENTS", "FAILED", "CAP-2"
+                )
+            
             task_complete(run_id, status="failed", reason=error_message)
             return
         
@@ -271,6 +313,12 @@ def main():
         report_progress(run_id, "info", {
             "message": f"✅ SVAD validado exitosamente. Puntaje de calidad: {validation_result['quality_score']}%"
         })
+        
+        # Log validación exitosa según Logic Book
+        if logic_logger:
+            logic_logger.log_phase_transition(
+                logger, run_id, "VALIDATION", "PCCE_GENERATION", "CAP-2"
+            )
         
         if validation_result["warnings"]:
             warnings_msg = "; ".join(validation_result["warnings"])
@@ -386,6 +434,13 @@ Genera ÚNICAMENTE el contenido YAML, sin explicaciones adicionales:"""
         )
         
         logger.info(f"✅ PCCE generado: {len(pcce_yaml_content)} caracteres")
+        
+        # Log generación de PCCE según Logic Book
+        if logic_logger:
+            logic_logger.log_agent_action(
+                logger, run_id, "Requirements", "PCCE_GENERATED",
+                {'pcce_size': len(pcce_yaml_content), 'model': 'ai/gemma3-qat'}
+            )
 
         # Saneamiento del contenido YAML devuelto por el LLM (eliminar ```yaml, etc.)
         cleaned_yaml = clean_yaml_output(pcce_yaml_content)
@@ -427,6 +482,12 @@ Genera ÚNICAMENTE el contenido YAML, sin explicaciones adicionales:"""
         
         logger.info(f"✅ PCCE guardado en: {pcce_relative_path}")
         
+        # Log generación exitosa de artefacto según Logic Book
+        if logic_logger:
+            logic_logger.log_artifact_generation(
+                logger, run_id, "PCCE", pcce_relative_path, success=True
+            )
+        
         # PASO 5: Generar resumen ejecutivo
         summary = f"""📋 ANÁLISIS DE REQUERIMIENTOS COMPLETADO
 
@@ -457,6 +518,12 @@ El sistema procederá automáticamente con el diseño arquitectónico usando el 
         task_complete(run_id, status="success", summary=summary)
         logger.info("🎉 RequirementsAgent completado exitosamente")
         
+        # Log completación exitosa según Logic Book
+        if logic_logger:
+            logic_logger.log_phase_transition(
+                logger, run_id, "REQUIREMENTS", "COMPLETED", "CAP-2"
+            )
+        
     except FileNotFoundError:
         error_msg = f"Archivo SVAD no encontrado: {svad_path}"
         logger.error(error_msg)
@@ -466,6 +533,14 @@ El sistema procederá automáticamente con el diseño arquitectónico usando el 
     except Exception as e:
         error_msg = f"Error crítico en RequirementsAgent: {str(e)}"
         logger.error(error_msg)
+        
+        # Log error crítico según Logic Book
+        if logic_logger:
+            logic_logger.log_agent_action(
+                logger, run_id, "Requirements", "CRITICAL_ERROR",
+                {'error': str(e), 'chapter': 'CAP-2'}
+            )
+        
         report_progress(run_id, "error", {"message": error_msg})
         task_complete(run_id, status="failed", reason=error_msg)
 
