@@ -59,12 +59,19 @@ manager = ConnectionManager()
 async def run_phase_1_design(run_id: str, pcce_content: bytes, feedback: str = None):
     await manager.broadcast(run_id, {"source": "Orchestrator", "type": "phase_start", "data": {"name": "Diseño"}})
     
-    temp_dir = tempfile.gettempdir()
-    temp_pcce_path = os.path.join(temp_dir, f"{run_id}_pcce.yml")
-    with open(temp_pcce_path, "wb") as f: f.write(pcce_content)
+    # CORREGIDO: usar ubicación relativa del proyecto para el PCCE
+    pcce_relative_path = f"temp/{run_id}_pcce.yml"
+    pcce_full_path = PROJECT_ROOT / pcce_relative_path
+    
+    # El archivo PCCE ya debería existir desde RequirementsAgent
+    # Si no existe, crearlo a partir del contenido proporcionado
+    if not pcce_full_path.exists():
+        pcce_full_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(pcce_full_path, "wb") as f: f.write(pcce_content)
+        logger.info(f"PCCE creado en {pcce_relative_path} para el Planner Agent")
 
     agent_script_path = PROJECT_ROOT / "agents" / "planner" / "planner_agent.py"
-    agent_command = [sys.executable, str(agent_script_path), "--run-id", run_id, "--pcce-path", temp_pcce_path]
+    agent_command = [sys.executable, str(agent_script_path), "--run-id", run_id, "--pcce-path", str(pcce_full_path)]
     
     # Agregar feedback si está presente
     if feedback:
@@ -78,12 +85,19 @@ async def run_phase_1_design(run_id: str, pcce_content: bytes, feedback: str = N
 async def run_quality_gate_1(run_id: str, pcce_content: bytes):
     await manager.broadcast(run_id, {"source": "Orchestrator", "type": "quality_gate_start", "data": {"name": "Validación de Diseño"}})
 
-    temp_dir = tempfile.gettempdir()
-    temp_pcce_path = os.path.join(temp_dir, f"{run_id}_pcce.yml")
-    with open(temp_pcce_path, "wb") as f: f.write(pcce_content)
+    # CORREGIDO: usar ubicación relativa del proyecto para el PCCE
+    pcce_relative_path = f"temp/{run_id}_pcce.yml"
+    pcce_full_path = PROJECT_ROOT / pcce_relative_path
+    
+    # El archivo PCCE ya debería existir desde fases anteriores
+    # Si no existe, crearlo a partir del contenido proporcionado
+    if not pcce_full_path.exists():
+        pcce_full_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(pcce_full_path, "wb") as f: f.write(pcce_content)
+        logger.info(f"PCCE creado en {pcce_relative_path} para el Validator Agent")
 
     agent_script_path = PROJECT_ROOT / "agents" / "validator" / "validator_agent.py"
-    agent_command = [sys.executable, str(agent_script_path), "--run-id", run_id, "--pcce-path", temp_pcce_path]
+    agent_command = [sys.executable, str(agent_script_path), "--run-id", run_id, "--pcce-path", str(pcce_full_path)]
 
     process = subprocess.Popen(agent_command)
     ACTIVE_PROCESSES[f"{run_id}_validator"] = process
@@ -301,7 +315,11 @@ async def validation_result(run_id: str, request: Request):
         # Validación exitosa - limpiar estado de reintentos y aprobar fase
         if run_id in RETRY_STATES:
             del RETRY_STATES[run_id]
-        await manager.broadcast(run_id, {"source": "Orchestrator", "type": "phase_end", "data": {"name": "Diseño", "status": "APROBADO"}})
+        await manager.broadcast(run_id, {
+            "source": "Orchestrator", 
+            "type": "phase_end", 
+            "data": {"name": "Diseño", "status": "APROBADO"}
+        })
     else:
         # Validación fallida - implementar lógica de reintentos
         await handle_validation_failure(run_id, result.get("message", "Error desconocido"))
@@ -331,24 +349,24 @@ async def approve_plan(run_id: str, request: Request):
             # Determinar qué acción tomar según el estado de aprobación actual
             logger.info(f"Approval received for {run_id} in state {current_approval_state}")
             
-            # Leer el PCCE
-            temp_dir = tempfile.gettempdir()
-            temp_pcce_path = os.path.join(temp_dir, f"{run_id}_pcce.yml")
+            # Leer el PCCE (CORREGIDO: usar ruta relativa del proyecto)
+            pcce_relative_path = f"temp/{run_id}_pcce.yml"
+            pcce_full_path = PROJECT_ROOT / pcce_relative_path
             
-            if not os.path.exists(temp_pcce_path):
-                logger.error(f"PCCE file not found for {run_id}")
+            if not pcce_full_path.exists():
+                logger.error(f"PCCE file not found for {run_id} at {pcce_relative_path}")
                 await manager.broadcast(run_id, {
                     "source": "Orchestrator",
                     "type": "phase_end",
                     "data": {
                         "name": "Aprobación",
                         "status": "RECHAZADO",
-                        "reason": "Archivo PCCE no encontrado"
+                        "reason": f"Archivo PCCE no encontrado en {pcce_relative_path}"
                     }
                 })
                 return {"status": "error", "message": "PCCE file not found", "run_id": run_id}
                 
-            with open(temp_pcce_path, "rb") as f:
+            with open(pcce_full_path, "rb") as f:
                 pcce_content = f.read()
             
             # CASO 1: Aprobación para INICIAR Fase de Diseño
@@ -522,20 +540,20 @@ async def handle_validation_failure(run_id: str, error_message: str):
             }
         })
         
-        # Re-invocar al planner con feedback
-        temp_dir = tempfile.gettempdir()
-        temp_pcce_path = os.path.join(temp_dir, f"{run_id}_pcce.yml")
+        # Re-invocar al planner con feedback (CORREGIDO: usar ubicación relativa del proyecto)
+        pcce_relative_path = f"temp/{run_id}_pcce.yml"
+        pcce_full_path = PROJECT_ROOT / pcce_relative_path
         
-        if os.path.exists(temp_pcce_path):
-            with open(temp_pcce_path, "rb") as f:
+        if pcce_full_path.exists():
+            with open(pcce_full_path, "rb") as f:
                 pcce_content = f.read()
             asyncio.create_task(run_phase_1_design(run_id, pcce_content, feedback))
         else:
-            logger.error(f"No se pudo encontrar el archivo PCCE para {run_id}")
+            logger.error(f"No se pudo encontrar el archivo PCCE para {run_id} en {pcce_relative_path}")
             await manager.broadcast(run_id, {
                 "source": "Orchestrator", 
                 "type": "phase_end", 
-                "data": {"name": "Diseño", "status": "RECHAZADO", "reason": "Archivo PCCE no encontrado"}
+                "data": {"name": "Diseño", "status": "RECHAZADO", "reason": f"Archivo PCCE no encontrado en {pcce_relative_path}"}
             })
     else:
         # Se agotaron los reintentos
@@ -558,21 +576,115 @@ async def websocket_endpoint(websocket: WebSocket, run_id: str):
         while True: await websocket.receive_text()
     except WebSocketDisconnect: manager.disconnect(run_id)
 
-# --- Toolbelt (solo lo que el planner necesita por ahora) ---
+# --- Toolbelt - Herramientas de Sistema de Archivos (Conformidad Logic Book Capítulo 2.2) ---
 @app.post("/v1/tools/filesystem/writeFile")
 async def tool_write_file(request: Request):
+    """Capítulo 2.2.1: Herramienta writeFile - Escribe contenido en un archivo"""
     data = await request.json()
     path_str = data.get("path")
     content = data.get("content")
     
+    # Validación de seguridad según Capítulo 2.1: Principio de Sandboxing
+    if not path_str or ".." in path_str or os.path.isabs(path_str):
+        return {"success": False, "error": "Ruta inválida o insegura"}
+    
     try:
-        # Asegurarse de que el directorio exista
+        # Asegurar que la operación esté en el directorio del proyecto (sandboxing)
         full_path = PROJECT_ROOT / path_str
+        
+        # Verificar que la ruta final esté dentro del PROJECT_ROOT
+        if not str(full_path.resolve()).startswith(str(PROJECT_ROOT.resolve())):
+            return {"success": False, "error": "Ruta fuera del sandbox del proyecto"}
+        
+        # Crear directorios padre si no existen
         full_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Escribir archivo
         with open(full_path, "w", encoding="utf-8") as f:
             f.write(content)
+        
+        logger.info(f"Archivo escrito exitosamente: {path_str}")
         return {"success": True}
     except Exception as e:
+        logger.error(f"Error escribiendo archivo {path_str}: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/v1/tools/filesystem/readFile")
+async def tool_read_file(request: Request):
+    """Capítulo 2.2.2: Herramienta readFile - Lee contenido de un archivo"""
+    data = await request.json()
+    path_str = data.get("path")
+    
+    # Validación de seguridad según Capítulo 2.1: Principio de Sandboxing
+    if not path_str or ".." in path_str or os.path.isabs(path_str):
+        return {"success": False, "error": "Ruta inválida o insegura"}
+    
+    try:
+        # Asegurar que la operación esté en el directorio del proyecto (sandboxing)
+        full_path = PROJECT_ROOT / path_str
+        
+        # Verificar que la ruta final esté dentro del PROJECT_ROOT
+        if not str(full_path.resolve()).startswith(str(PROJECT_ROOT.resolve())):
+            return {"success": False, "error": "Ruta fuera del sandbox del proyecto"}
+        
+        # Verificar que el archivo exista
+        if not full_path.exists():
+            return {"success": False, "error": "Archivo no encontrado"}
+        
+        # Leer archivo
+        with open(full_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        
+        logger.info(f"Archivo leído exitosamente: {path_str} ({len(content)} caracteres)")
+        return {"success": True, "content": content}
+    except Exception as e:
+        logger.error(f"Error leyendo archivo {path_str}: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/v1/tools/filesystem/listFiles")
+async def tool_list_files(request: Request):
+    """Capítulo 2.2.3: Herramienta listFiles - Lista archivos y directorios"""
+    data = await request.json()
+    path_str = data.get("path", ".")  # Por defecto, directorio actual
+    
+    # Validación de seguridad según Capítulo 2.1: Principio de Sandboxing
+    if ".." in path_str or os.path.isabs(path_str):
+        return {"success": False, "error": "Ruta inválida o insegura"}
+    
+    try:
+        # Asegurar que la operación esté en el directorio del proyecto (sandboxing)
+        full_path = PROJECT_ROOT / path_str
+        
+        # Verificar que la ruta final esté dentro del PROJECT_ROOT
+        if not str(full_path.resolve()).startswith(str(PROJECT_ROOT.resolve())):
+            return {"success": False, "error": "Ruta fuera del sandbox del proyecto"}
+        
+        # Verificar que el directorio exista
+        if not full_path.exists():
+            return {"success": False, "error": "Directorio no encontrado"}
+        
+        if not full_path.is_dir():
+            return {"success": False, "error": "La ruta especificada no es un directorio"}
+        
+        # Listar contenido del directorio
+        files = []
+        directories = []
+        
+        for item in full_path.iterdir():
+            relative_path = str(item.relative_to(PROJECT_ROOT))
+            if item.is_file():
+                files.append(relative_path)
+            elif item.is_dir():
+                directories.append(relative_path)
+        
+        logger.info(f"Directorio listado: {path_str} ({len(files)} archivos, {len(directories)} directorios)")
+        return {
+            "success": True, 
+            "files": sorted(files), 
+            "directories": sorted(directories)
+        }
+    except Exception as e:
+        logger.error(f"Error listando directorio {path_str}: {str(e)}")
         return {"success": False, "error": str(e)}
 
 # --- Endpoints de Gestión de Modelos Locales ---
@@ -655,15 +767,40 @@ async def cleanup_idle_models():
 async def report_agent_progress(run_id: str, request: Request):
     progress_data = await request.json()
     
-    # Retransmitir todos los mensajes, incluidos los de planificación
+    # VALIDACIÓN ESTRICTA DEL PROTOCOLO WEBSOCKET
+    # Asegurar que el mensaje siga el esquema {"source": "...", "type": "...", "data": {...}}
+    if not isinstance(progress_data, dict):
+        logger.error(f"Mensaje inválido de agente para {run_id}: no es un diccionario")
+        return {"status": "error", "message": "Mensaje debe ser un objeto JSON"}
+    
+    required_keys = ["source", "type", "data"]
+    missing_keys = [key for key in required_keys if key not in progress_data]
+    
+    if missing_keys:
+        logger.error(f"Mensaje inválido de agente para {run_id}: faltan claves {missing_keys}")
+        return {"status": "error", "message": f"Mensaje debe incluir: {', '.join(required_keys)}"}
+    
+    # Validar que 'data' sea un diccionario
+    if not isinstance(progress_data.get("data"), dict):
+        logger.error(f"Mensaje inválido de agente para {run_id}: 'data' debe ser un objeto")
+        return {"status": "error", "message": "Campo 'data' debe ser un objeto JSON"}
+    
+    # Validar 'source' y 'type' sean strings no vacíos
+    if not isinstance(progress_data.get("source"), str) or not progress_data.get("source").strip():
+        logger.error(f"Mensaje inválido de agente para {run_id}: 'source' debe ser string no vacío")
+        return {"status": "error", "message": "Campo 'source' debe ser un string no vacío"}
+    
+    if not isinstance(progress_data.get("type"), str) or not progress_data.get("type").strip():
+        logger.error(f"Mensaje inválido de agente para {run_id}: 'type' debe ser string no vacío")
+        return {"status": "error", "message": "Campo 'type' debe ser un string no vacío"}
+    
+    # PROTOCOLO VALIDADO - Retransmitir mensaje
     message_type = progress_data.get("type")
     
-    if message_type in ["plan_generated", "plan_updated"]:
-        # Mensajes de planificación: retransmitir directamente al TUI
-        logger.info(f"Retransmitiendo mensaje de planificación: {message_type}")
-        await manager.broadcast(run_id, progress_data)
-    else:
-        # Otros mensajes: retransmisión normal
-        await manager.broadcast(run_id, progress_data)
+    # Logging mejorado para debugging
+    logger.info(f"Retransmitiendo mensaje válido [{progress_data.get('source')}:{message_type}] para {run_id}")
+    
+    # Retransmitir el mensaje validado
+    await manager.broadcast(run_id, progress_data)
     
     return {"status": "reported"}

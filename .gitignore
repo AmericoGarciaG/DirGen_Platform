@@ -18,6 +18,11 @@ client/single tests/demo_ui.py
 client/single tests/test_double_messages.py
 client/single tests/test_overflow.py
 client/single tests/tui_demo.py
+# Archivos entregables generados por agentes (Logic Book - Entregables dinámicos)
+design/
+temp/
+
+# Archivos específicos de diseño y artefactos (Legacy - mantenido por compatibilidad)
 design/architecture.puml
 design/api/api.yml
 design/api/backfill.yml

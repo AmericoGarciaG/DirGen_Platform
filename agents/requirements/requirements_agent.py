@@ -43,11 +43,23 @@ def report_progress(run_id: str, type: str, data: dict):
         logger.warning(f"No se pudo reportar el progreso al Orquestador para el run_id {run_id}")
 
 def use_tool(tool_name: str, args: dict) -> str:
-    """Usa herramientas del orquestador"""
-    if tool_name == "writeFile":
-        response = requests.post(f"{HOST}/v1/tools/filesystem/writeFile", json=args)
-        return json.dumps(response.json())
-    return json.dumps({"success": False, "error": f"Herramienta '{tool_name}' desconocida."})
+    """Usa herramientas del orquestador - Conformidad Logic Book Capítulo 2.2"""
+    toolbelt_endpoints = {
+        "writeFile": f"{HOST}/v1/tools/filesystem/writeFile",
+        "readFile": f"{HOST}/v1/tools/filesystem/readFile", 
+        "listFiles": f"{HOST}/v1/tools/filesystem/listFiles"
+    }
+    
+    if tool_name in toolbelt_endpoints:
+        try:
+            response = requests.post(toolbelt_endpoints[tool_name], json=args, timeout=10)
+            response.raise_for_status()
+            return json.dumps(response.json())
+        except requests.RequestException as e:
+            logger.error(f"Error llamando herramienta {tool_name}: {str(e)}")
+            return json.dumps({"success": False, "error": f"Error de conexión con {tool_name}: {str(e)}"})
+    
+    return json.dumps({"success": False, "error": f"Herramienta '{tool_name}' no disponible. Herramientas disponibles: {list(toolbelt_endpoints.keys())}"})
 
 def call_llm_service(system_prompt: str, user_prompt: str, task_type: str = "general", model_id: str = None) -> str:
     """Interfaz simplificada para llamar al servicio central de LLM"""
@@ -391,17 +403,17 @@ Genera ÚNICAMENTE el contenido YAML, sin explicaciones adicionales:"""
             task_complete(run_id, status="failed", reason=f"YAML inválido: {str(e)}")
             return
         
-        # Guardar PCCE en archivo temporal
-        temp_dir = tempfile.gettempdir()
-        pcce_path = os.path.join(temp_dir, f"{run_id}_pcce.yml")
+        # Guardar PCCE en archivo temporal (CORREGIDO: usar ruta relativa del proyecto)
+        # Usar ruta relativa en lugar de ruta absoluta temporal para cumplir con sandboxing
+        pcce_relative_path = f"temp/{run_id}_pcce.yml"
         
         report_progress(run_id, "action", {
             "tool": "writeFile",
-            "args": {"path": pcce_path, "content_length": len(pcce_yaml_content)}
+            "args": {"path": pcce_relative_path, "content_length": len(pcce_yaml_content)}
         })
         
         tool_result = use_tool("writeFile", {
-            "path": pcce_path,
+            "path": pcce_relative_path,
             "content": cleaned_yaml
         })
         
@@ -413,7 +425,7 @@ Genera ÚNICAMENTE el contenido YAML, sin explicaciones adicionales:"""
             task_complete(run_id, status="failed", reason=error_msg)
             return
         
-        logger.info(f"✅ PCCE guardado en: {pcce_path}")
+        logger.info(f"✅ PCCE guardado en: {pcce_relative_path}")
         
         # PASO 5: Generar resumen ejecutivo
         summary = f"""📋 ANÁLISIS DE REQUERIMIENTOS COMPLETADO
@@ -429,7 +441,7 @@ Genera ÚNICAMENTE el contenido YAML, sin explicaciones adicionales:"""
 - Formato: ✓ Válido
 
 🏗️ PCCE GENERADO:
-- Archivo: {os.path.basename(pcce_path)}
+- Archivo: {os.path.basename(pcce_relative_path)}
 - Proyecto: {project_info['nombre_proyecto']}
 - Tamaño: {len(cleaned_yaml):,} caracteres
 - Estado: ✓ Listo para Fase 1
@@ -438,7 +450,7 @@ Genera ÚNICAMENTE el contenido YAML, sin explicaciones adicionales:"""
 El sistema procederá automáticamente con el diseño arquitectónico usando el PCCE generado."""
         
         report_progress(run_id, "info", {
-            "message": f"✅ RequirementsAgent completado. PCCE generado exitosamente en {pcce_path}"
+            "message": f"✅ RequirementsAgent completado. PCCE generado exitosamente en {pcce_relative_path}"
         })
         
         # Notificar completación exitosa
