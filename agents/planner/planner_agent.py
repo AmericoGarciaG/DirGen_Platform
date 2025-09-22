@@ -41,10 +41,23 @@ def report_progress(run_id: str, type: str, data: dict):
 
 
 def use_tool(tool_name: str, args: dict) -> str:
-    if tool_name == "writeFile":
-        response = requests.post(f"{HOST}/v1/tools/filesystem/writeFile", json=args)
-        return json.dumps(response.json())
-    return json.dumps({"success": False, "error": f"Herramienta '{tool_name}' desconocida."})
+    """Usa herramientas del orquestador - Conformidad Logic Book Capítulo 2.2"""
+    toolbelt_endpoints = {
+        "writeFile": f"{HOST}/v1/tools/filesystem/writeFile",
+        "readFile": f"{HOST}/v1/tools/filesystem/readFile", 
+        "listFiles": f"{HOST}/v1/tools/filesystem/listFiles"
+    }
+    
+    if tool_name in toolbelt_endpoints:
+        try:
+            response = requests.post(toolbelt_endpoints[tool_name], json=args, timeout=10)
+            response.raise_for_status()
+            return json.dumps(response.json())
+        except requests.RequestException as e:
+            logger.error(f"Error llamando herramienta {tool_name}: {str(e)}")
+            return json.dumps({"success": False, "error": f"Error de conexión con {tool_name}: {str(e)}"})
+    
+    return json.dumps({"success": False, "error": f"Herramienta '{tool_name}' no disponible. Herramientas disponibles: {list(toolbelt_endpoints.keys())}"})
 
 
 # === INTERFAZ SIMPLIFICADA PARA LLM ===
