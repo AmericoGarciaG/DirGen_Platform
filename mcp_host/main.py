@@ -8,12 +8,33 @@ import tempfile
 import uuid
 from datetime import datetime
 from pathlib import Path
+from enum import Enum
 
 import uvicorn
 import yaml
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from websockets.exceptions import ConnectionClosed
+
+# --- Enumeración de Estados de Run ---
+class RunStatus(Enum):
+    """Estados posibles para un Run según el flujo del Logic Book"""
+    INITIAL = "initial"
+    REQUIREMENTS_PROCESSING = "requirements_processing"
+    REQUIREMENTS_WAITING_APPROVAL = "requirements_waiting_approval"
+    REQUIREMENTS_APPROVED = "requirements_approved"
+    REQUIREMENTS_REJECTED = "requirements_rejected"
+    DESIGN_PROCESSING = "design_processing"
+    DESIGN_WAITING_APPROVAL = "design_waiting_approval"
+    DESIGN_APPROVED = "design_approved"
+    DESIGN_REJECTED = "design_rejected"
+    VALIDATION_PROCESSING = "validation_processing"
+    VALIDATION_PASSED = "validation_passed"
+    VALIDATION_FAILED = "validation_failed"
+    EXECUTION_PROCESSING = "execution_processing"
+    EXECUTION_COMPLETED = "execution_completed"
+    EXECUTION_FAILED = "execution_failed"
+    CANCELLED = "cancelled"
 
 # --- Configuración y Estado ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -32,13 +53,15 @@ app.add_middleware(
 ACTIVE_PROCESSES = {}
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-# Estados de reintento por run_id
-RETRY_STATES = {}
+# --- Estado Global de Runs ---
+RUN_STATES = {}  # run_id -> {"status": RunStatus, "timestamp": datetime, "retry_count": int, "metadata": dict}
 MAX_RETRIES = 3
 
-# Estados de aprobación por run_id
+# Estados de reintento por run_id (mantenido para compatibilidad temporal)
+RETRY_STATES = {}
+
+# Estados de aprobación por run_id (mantenido para compatibilidad temporal)
 APPROVAL_STATES = {}
-# Estados posibles: "waiting_approval", "approved", "rejected"
 
 # --- Gestor de Conexiones WebSocket ---
 class ConnectionManager:
@@ -55,16 +78,106 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+# --- Función de Gestión de Estado ---
+async def set_run_status(run_id: str, status: RunStatus, metadata: dict = None):
+    """Actualiza el estado de un run y envía mensaje WebSocket a la TUI"""
+    timestamp = datetime.now()
+    
+    # Inicializar estado si no existe
+    if run_id not in RUN_STATES:
+        RUN_STATES[run_id] = {
+            "status": RunStatus.INITIAL,
+            "timestamp": timestamp,
+            "retry_count": 0,
+            "metadata": {}
+        }
+    
+    # Obtener estado anterior para logging
+    previous_status = RUN_STATES[run_id]["status"]
+    
+    # Actualizar estado
+    RUN_STATES[run_id]["status"] = status
+    RUN_STATES[run_id]["timestamp"] = timestamp
+    
+    # Manejar metadata adicional
+    if metadata:
+        RUN_STATES[run_id]["metadata"].update(metadata)
+    
+    # Manejar retry_count si está en metadata
+    if "retry_count" in (metadata or {}):
+        RUN_STATES[run_id]["retry_count"] = metadata["retry_count"]
+    
+    # Mapeo de estados a nombres legibles para la TUI
+    status_display_names = {
+        RunStatus.INITIAL: "Inicializando",
+        RunStatus.REQUIREMENTS_PROCESSING: "Procesando Requerimientos",
+        RunStatus.REQUIREMENTS_WAITING_APPROVAL: "Esperando Aprobación de Requerimientos",
+        RunStatus.REQUIREMENTS_APPROVED: "Requerimientos Aprobados",
+        RunStatus.REQUIREMENTS_REJECTED: "Requerimientos Rechazados",
+        RunStatus.DESIGN_PROCESSING: "Procesando Diseño",
+        RunStatus.DESIGN_WAITING_APPROVAL: "Esperando Aprobación de Diseño",
+        RunStatus.DESIGN_APPROVED: "Diseño Aprobado",
+        RunStatus.DESIGN_REJECTED: "Diseño Rechazado",
+        RunStatus.VALIDATION_PROCESSING: "Validando Diseño",
+        RunStatus.VALIDATION_PASSED: "Validación Exitosa",
+        RunStatus.VALIDATION_FAILED: "Validación Fallida",
+        RunStatus.EXECUTION_PROCESSING: "Ejecutando Plan",
+        RunStatus.EXECUTION_COMPLETED: "Ejecución Completada",
+        RunStatus.EXECUTION_FAILED: "Ejecución Fallida",
+        RunStatus.CANCELLED: "Cancelado"
+    }
+    
+    # Logging de transición de estado
+    logger.info(f"Run {run_id}: {previous_status.value} -> {status.value} ({status_display_names[status]})")
+    
+    # Crear mensaje WebSocket con formato específico
+    websocket_message = {
+        "source": "Orchestrator",
+        "type": "run_status_change",
+        "data": {
+            "run_id": run_id,
+            "status": status.value,
+            "phase": status_display_names[status],
+            "timestamp": timestamp.isoformat(),
+            "retry_count": RUN_STATES[run_id]["retry_count"],
+            "metadata": RUN_STATES[run_id]["metadata"]
+        }
+    }
+    
+    # Añadir campos adicionales si existen en metadata
+    if metadata:
+        if "reason" in metadata:
+            websocket_message["data"]["reason"] = metadata["reason"]
+        if "message" in metadata:
+            websocket_message["data"]["message"] = metadata["message"]
+    
+    # Enviar mensaje WebSocket
+    await manager.broadcast(run_id, websocket_message)
+
 # --- Lógica de Orquestación de Fases ---
 async def run_phase_1_design(run_id: str, pcce_content: bytes, feedback: str = None):
+    # Establecer estado de procesamiento de diseño
+    metadata = {"message": "Iniciando fase de diseño y planificación"}
+    if feedback:
+        metadata["feedback"] = feedback
+        metadata["message"] = f"Reiniciando fase de diseño con feedback: {feedback[:50]}..."
+    await set_run_status(run_id, RunStatus.DESIGN_PROCESSING, metadata)
+    
     await manager.broadcast(run_id, {"source": "Orchestrator", "type": "phase_start", "data": {"name": "Diseño"}})
     
-    temp_dir = tempfile.gettempdir()
-    temp_pcce_path = os.path.join(temp_dir, f"{run_id}_pcce.yml")
-    with open(temp_pcce_path, "wb") as f: f.write(pcce_content)
+    # CORREGIDO: usar ubicación relativa del proyecto para el PCCE
+    pcce_relative_path = f"temp/{run_id}_pcce.yml"
+    pcce_full_path = PROJECT_ROOT / pcce_relative_path
+    
+    # El archivo PCCE ya debería existir desde RequirementsAgent
+    # Si no existe, crearlo a partir del contenido proporcionado
+    if not pcce_full_path.exists():
+        pcce_full_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(pcce_full_path, "wb") as f: f.write(pcce_content)
+        logger.info(f"PCCE creado en {pcce_relative_path} para el Planner Agent")
 
     agent_script_path = PROJECT_ROOT / "agents" / "planner" / "planner_agent.py"
-    agent_command = [sys.executable, str(agent_script_path), "--run-id", run_id, "--pcce-path", temp_pcce_path]
+    agent_command = [sys.executable, str(agent_script_path), "--run-id", run_id, "--pcce-path", str(pcce_full_path)]
     
     # Agregar feedback si está presente
     if feedback:
@@ -76,14 +189,26 @@ async def run_phase_1_design(run_id: str, pcce_content: bytes, feedback: str = N
     await manager.broadcast(run_id, {"source": "Orchestrator", "type": "info", "data": {"message": f"Agente Planificador invocado (PID: {process.pid})..."}})
 
 async def run_quality_gate_1(run_id: str, pcce_content: bytes):
+    # Establecer estado de procesamiento de validación
+    await set_run_status(run_id, RunStatus.VALIDATION_PROCESSING, {
+        "message": "Iniciando validación de diseño con Validator Agent"
+    })
+    
     await manager.broadcast(run_id, {"source": "Orchestrator", "type": "quality_gate_start", "data": {"name": "Validación de Diseño"}})
 
-    temp_dir = tempfile.gettempdir()
-    temp_pcce_path = os.path.join(temp_dir, f"{run_id}_pcce.yml")
-    with open(temp_pcce_path, "wb") as f: f.write(pcce_content)
+    # CORREGIDO: usar ubicación relativa del proyecto para el PCCE
+    pcce_relative_path = f"temp/{run_id}_pcce.yml"
+    pcce_full_path = PROJECT_ROOT / pcce_relative_path
+    
+    # El archivo PCCE ya debería existir desde fases anteriores
+    # Si no existe, crearlo a partir del contenido proporcionado
+    if not pcce_full_path.exists():
+        pcce_full_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(pcce_full_path, "wb") as f: f.write(pcce_content)
+        logger.info(f"PCCE creado en {pcce_relative_path} para el Validator Agent")
 
     agent_script_path = PROJECT_ROOT / "agents" / "validator" / "validator_agent.py"
-    agent_command = [sys.executable, str(agent_script_path), "--run-id", run_id, "--pcce-path", temp_pcce_path]
+    agent_command = [sys.executable, str(agent_script_path), "--run-id", run_id, "--pcce-path", str(pcce_full_path)]
 
     process = subprocess.Popen(agent_command)
     ACTIVE_PROCESSES[f"{run_id}_validator"] = process
@@ -92,6 +217,11 @@ async def run_quality_gate_1(run_id: str, pcce_content: bytes):
 # --- Lógica de Fase 0: Análisis de Requerimientos ---
 async def run_phase_0_requirements(run_id: str, svad_content: bytes):
     """Ejecuta la Fase 0: Análisis de Requerimientos"""
+    # Establecer estado de procesamiento de requerimientos
+    await set_run_status(run_id, RunStatus.REQUIREMENTS_PROCESSING, {
+        "message": "Iniciando análisis de requerimientos desde documento SVAD"
+    })
+    
     await manager.broadcast(run_id, {
         "source": "Orchestrator", 
         "type": "phase_start", 
@@ -128,6 +258,12 @@ async def initiate_from_svad(svad_file: UploadFile = File(...)):
     run_id = f"run-{uuid.uuid4()}"
     svad_content = await svad_file.read()
     
+    # Establecer estado inicial
+    await set_run_status(run_id, RunStatus.INITIAL, {
+        "message": "Run inicializado desde documento SVAD",
+        "svad_filename": svad_file.filename or "svad_document.md"
+    })
+    
     logger.info(f"Iniciando Fase 0 (Análisis de Requerimientos) para {run_id}")
     
     # Iniciar Fase 0 asíncronamente
@@ -140,6 +276,12 @@ async def start_run(pcce_file: UploadFile = File(...)):
     """Legacy endpoint: Inicia directamente desde PCCE - Fase 1"""
     run_id = f"run-{uuid.uuid4()}"
     pcce_content = await pcce_file.read()
+    
+    # Establecer estado inicial
+    await set_run_status(run_id, RunStatus.INITIAL, {
+        "message": "Run inicializado desde archivo PCCE (modo legacy)",
+        "pcce_filename": pcce_file.filename or "pcce_document.yml"
+    })
     
     # Iniciar Fase 1 asíncronamente para no bloquear la respuesta HTTP
     asyncio.create_task(run_phase_1_design(run_id, pcce_content))
@@ -160,6 +302,12 @@ async def agent_task_complete(run_id: str, request: Request):
             reason = data.get("reason", "Validación del documento SVAD falló")
             logger.warning(f"RequirementsAgent validation failed for {run_id}: {reason}")
             
+            # Establecer estado de requerimientos rechazados
+            await set_run_status(run_id, RunStatus.REQUIREMENTS_REJECTED, {
+                "reason": f"SVAD inválido: {reason}",
+                "message": "Validación del documento SVAD falló"
+            })
+            
             await manager.broadcast(run_id, {
                 "source": "Orchestrator", 
                 "type": "phase_end", 
@@ -172,6 +320,12 @@ async def agent_task_complete(run_id: str, request: Request):
         else:
             # Fase 0 completada exitosamente - ESPERAR APROBACIÓN
             logger.info(f"RequirementsAgent completed successfully for {run_id}. WAITING FOR USER APPROVAL before starting Phase 1.")
+            
+            # Establecer estado de espera de aprobación de requerimientos
+            await set_run_status(run_id, RunStatus.REQUIREMENTS_WAITING_APPROVAL, {
+                "message": "PCCE generado exitosamente. Esperando aprobación del usuario para continuar",
+                "summary": summary if summary else None
+            })
             
             if summary:
                 await manager.broadcast(run_id, {
@@ -219,6 +373,12 @@ async def agent_task_complete(run_id: str, request: Request):
             reason = data.get("reason", "El agente determinó que la tarea no es posible de completar")
             logger.warning(f"Planner declared task impossible for {run_id}: {reason}")
             
+            # Establecer estado de diseño rechazado
+            await set_run_status(run_id, RunStatus.DESIGN_REJECTED, {
+                "reason": f"Agente declaró tarea imposible: {reason}",
+                "message": "El Planner Agent determinó que la tarea no es realizable"
+            })
+            
             # Limpiar estado de reintentos
             if run_id in RETRY_STATES:
                 del RETRY_STATES[run_id]
@@ -236,6 +396,12 @@ async def agent_task_complete(run_id: str, request: Request):
             # Auto-verificación falló
             reason = data.get("reason", "Auto-verificación falló")
             logger.warning(f"Planner verification failed for {run_id}: {reason}")
+            
+            # Establecer estado de diseño fallido
+            await set_run_status(run_id, RunStatus.DESIGN_REJECTED, {
+                "reason": f"Verificación falló: {reason}",
+                "message": "Auto-verificación del Planner Agent falló"
+            })
             
             await manager.broadcast(run_id, {
                 "source": "Orchestrator", 
@@ -255,6 +421,15 @@ async def agent_task_complete(run_id: str, request: Request):
             await handle_validation_failure(run_id, reason)
         else:
             # Tarea completada exitosamente - NUEVO FLUJO CON APROBACIÓN
+            logger.info(f"Planner completed successfully for {run_id}. Execution plan generated. Waiting for user approval.")
+            
+            # Establecer estado de espera de aprobación de diseño
+            await set_run_status(run_id, RunStatus.DESIGN_WAITING_APPROVAL, {
+                "message": "Plan de ejecución generado exitosamente. Esperando aprobación del usuario",
+                "summary": summary if summary else None,
+                "tasks": data.get("tasks", [])
+            })
+            
             if summary:
                 # Mostrar resumen ejecutivo de forma destacada
                 await manager.broadcast(run_id, {
@@ -266,9 +441,6 @@ async def agent_task_complete(run_id: str, request: Request):
                     }
                 })
                 logger.info(f"Executive summary sent to TUI for {run_id}")
-            
-            # Planner Agent completado - ESTE ES EL VERDADERO PLAN DE EJECUCIÓN
-            logger.info(f"Planner completed successfully for {run_id}. Execution plan generated. Waiting for user approval.")
             
             # Establecer estado de espera de aprobación para EJECUTAR el plan
             APPROVAL_STATES[run_id] = "waiting_execution_approval"
@@ -299,11 +471,27 @@ async def validation_result(run_id: str, request: Request):
     
     if result.get("success"):
         # Validación exitosa - limpiar estado de reintentos y aprobar fase
+        await set_run_status(run_id, RunStatus.VALIDATION_PASSED, {
+            "message": "Validación del diseño completada exitosamente",
+            "validation_details": result
+        })
+        
         if run_id in RETRY_STATES:
             del RETRY_STATES[run_id]
-        await manager.broadcast(run_id, {"source": "Orchestrator", "type": "phase_end", "data": {"name": "Diseño", "status": "APROBADO"}})
+        await manager.broadcast(run_id, {
+            "source": "Orchestrator", 
+            "type": "phase_end", 
+            "data": {"name": "Diseño", "status": "APROBADO"}
+        })
     else:
-        # Validación fallida - implementar lógica de reintentos
+        # Validación fallida - establecer estado fallido
+        await set_run_status(run_id, RunStatus.VALIDATION_FAILED, {
+            "message": "Validación del diseño falló",
+            "reason": result.get("message", "Error desconocido"),
+            "validation_details": result
+        })
+        
+        # Implementar lógica de reintentos
         await handle_validation_failure(run_id, result.get("message", "Error desconocido"))
     
     return {"status": "processed"}
@@ -331,31 +519,38 @@ async def approve_plan(run_id: str, request: Request):
             # Determinar qué acción tomar según el estado de aprobación actual
             logger.info(f"Approval received for {run_id} in state {current_approval_state}")
             
-            # Leer el PCCE
-            temp_dir = tempfile.gettempdir()
-            temp_pcce_path = os.path.join(temp_dir, f"{run_id}_pcce.yml")
+            # Leer el PCCE (CORREGIDO: usar ruta relativa del proyecto)
+            pcce_relative_path = f"temp/{run_id}_pcce.yml"
+            pcce_full_path = PROJECT_ROOT / pcce_relative_path
             
-            if not os.path.exists(temp_pcce_path):
-                logger.error(f"PCCE file not found for {run_id}")
+            if not pcce_full_path.exists():
+                logger.error(f"PCCE file not found for {run_id} at {pcce_relative_path}")
                 await manager.broadcast(run_id, {
                     "source": "Orchestrator",
                     "type": "phase_end",
                     "data": {
                         "name": "Aprobación",
                         "status": "RECHAZADO",
-                        "reason": "Archivo PCCE no encontrado"
+                        "reason": f"Archivo PCCE no encontrado en {pcce_relative_path}"
                     }
                 })
                 return {"status": "error", "message": "PCCE file not found", "run_id": run_id}
                 
-            with open(temp_pcce_path, "rb") as f:
+            with open(pcce_full_path, "rb") as f:
                 pcce_content = f.read()
             
             # CASO 1: Aprobación para INICIAR Fase de Diseño
             if current_approval_state == "waiting_design_phase_approval":
                 logger.info(f"Starting Phase 1: Design Planning for {run_id} (user approved design phase)")
                 
-                # Actualizar estado
+                # Establecer estado de requerimientos aprobados
+                await set_run_status(run_id, RunStatus.REQUIREMENTS_APPROVED, {
+                    "message": "Requerimientos aprobados por el usuario. Iniciando fase de diseño",
+                    "user_response": user_response,
+                    "phase_approved": "design"
+                })
+                
+                # Actualizar estado (mantenido para compatibilidad)
                 APPROVAL_STATES[run_id] = "design_approved"
                 
                 # Notificar aprobación
@@ -389,7 +584,14 @@ async def approve_plan(run_id: str, request: Request):
             elif current_approval_state == "waiting_execution_approval":
                 logger.info(f"Starting execution for {run_id} (user approved execution plan)")
                 
-                # Actualizar estado
+                # Establecer estado de diseño aprobado
+                await set_run_status(run_id, RunStatus.DESIGN_APPROVED, {
+                    "message": "Plan de ejecución aprobado por el usuario. Iniciando validación",
+                    "user_response": user_response,
+                    "phase_approved": "execution"
+                })
+                
+                # Actualizar estado (mantenido para compatibilidad)
                 APPROVAL_STATES[run_id] = "execution_approved"
                 
                 # Notificar aprobación
@@ -431,19 +633,34 @@ async def approve_plan(run_id: str, request: Request):
             # Plan/Fase rechazado
             logger.info(f"Rejection received for {run_id} in state {current_approval_state}. User response: '{user_response}'")
             
-            # Actualizar estado
-            APPROVAL_STATES[run_id] = "rejected"
-            
-            # Determinar qué se rechazó según el estado
+            # Determinar qué se rechazó según el estado y establecer estado apropiado
             if current_approval_state == "waiting_design_phase_approval":
+                await set_run_status(run_id, RunStatus.REQUIREMENTS_REJECTED, {
+                    "message": "Requerimientos rechazados por el usuario",
+                    "user_response": user_response,
+                    "reason": f"Usuario rechazó los requerimientos: {user_response}"
+                })
                 phase_name = "Fase de Diseño"
                 rejection_message = f"Fase de Diseño rechazada por el usuario: {user_response}"
             elif current_approval_state == "waiting_execution_approval":
+                await set_run_status(run_id, RunStatus.DESIGN_REJECTED, {
+                    "message": "Plan de ejecución rechazado por el usuario",
+                    "user_response": user_response,
+                    "reason": f"Usuario rechazó el plan de ejecución: {user_response}"
+                })
                 phase_name = "Plan de Ejecución"
                 rejection_message = f"Plan de ejecución rechazado por el usuario: {user_response}"
             else:
+                await set_run_status(run_id, RunStatus.CANCELLED, {
+                    "message": "Proceso cancelado por el usuario",
+                    "user_response": user_response,
+                    "reason": f"Usuario canceló el proceso: {user_response}"
+                })
                 phase_name = "Proceso"
                 rejection_message = f"Proceso rechazado por el usuario: {user_response}"
+            
+            # Actualizar estado (mantenido para compatibilidad)
+            APPROVAL_STATES[run_id] = "rejected"
             
             # Notificar rechazo
             await manager.broadcast(run_id, {
@@ -512,6 +729,14 @@ async def handle_validation_failure(run_id: str, error_message: str):
             prev_errors = "; ".join(retry_state["feedback_history"][:-1])
             feedback += f" Errores anteriores: {prev_errors}"
         
+        # Establecer estado de reintento en el diseño
+        await set_run_status(run_id, RunStatus.DESIGN_PROCESSING, {
+            "retry_count": retry_state["retry_count"],
+            "message": f"Reintentando diseño - Intento {retry_state['retry_count']}/{MAX_RETRIES}",
+            "feedback": feedback,
+            "error_message": error_message
+        })
+        
         await manager.broadcast(run_id, {
             "source": "Orchestrator", 
             "type": "retry_attempt", 
@@ -522,24 +747,33 @@ async def handle_validation_failure(run_id: str, error_message: str):
             }
         })
         
-        # Re-invocar al planner con feedback
-        temp_dir = tempfile.gettempdir()
-        temp_pcce_path = os.path.join(temp_dir, f"{run_id}_pcce.yml")
+        # Re-invocar al planner con feedback (CORREGIDO: usar ubicación relativa del proyecto)
+        pcce_relative_path = f"temp/{run_id}_pcce.yml"
+        pcce_full_path = PROJECT_ROOT / pcce_relative_path
         
-        if os.path.exists(temp_pcce_path):
-            with open(temp_pcce_path, "rb") as f:
+        if pcce_full_path.exists():
+            with open(pcce_full_path, "rb") as f:
                 pcce_content = f.read()
             asyncio.create_task(run_phase_1_design(run_id, pcce_content, feedback))
         else:
-            logger.error(f"No se pudo encontrar el archivo PCCE para {run_id}")
+            logger.error(f"No se pudo encontrar el archivo PCCE para {run_id} en {pcce_relative_path}")
             await manager.broadcast(run_id, {
                 "source": "Orchestrator", 
                 "type": "phase_end", 
-                "data": {"name": "Diseño", "status": "RECHAZADO", "reason": "Archivo PCCE no encontrado"}
+                "data": {"name": "Diseño", "status": "RECHAZADO", "reason": f"Archivo PCCE no encontrado en {pcce_relative_path}"}
             })
     else:
         # Se agotaron los reintentos
         logger.warning(f"Maximum retries exceeded for {run_id}")
+        
+        # Establecer estado de diseño fallido por agotamiento de reintentos
+        await set_run_status(run_id, RunStatus.DESIGN_REJECTED, {
+            "message": f"Diseño rechazado: se agotaron los {MAX_RETRIES} reintentos",
+            "reason": f"Se agotaron los {MAX_RETRIES} reintentos. Último error: {error_message}",
+            "retry_count": MAX_RETRIES,
+            "final_error": error_message
+        })
+        
         del RETRY_STATES[run_id]
         await manager.broadcast(run_id, {
             "source": "Orchestrator", 
@@ -558,21 +792,115 @@ async def websocket_endpoint(websocket: WebSocket, run_id: str):
         while True: await websocket.receive_text()
     except WebSocketDisconnect: manager.disconnect(run_id)
 
-# --- Toolbelt (solo lo que el planner necesita por ahora) ---
+# --- Toolbelt - Herramientas de Sistema de Archivos (Conformidad Logic Book Capítulo 2.2) ---
 @app.post("/v1/tools/filesystem/writeFile")
 async def tool_write_file(request: Request):
+    """Capítulo 2.2.1: Herramienta writeFile - Escribe contenido en un archivo"""
     data = await request.json()
     path_str = data.get("path")
     content = data.get("content")
     
+    # Validación de seguridad según Capítulo 2.1: Principio de Sandboxing
+    if not path_str or ".." in path_str or os.path.isabs(path_str):
+        return {"success": False, "error": "Ruta inválida o insegura"}
+    
     try:
-        # Asegurarse de que el directorio exista
+        # Asegurar que la operación esté en el directorio del proyecto (sandboxing)
         full_path = PROJECT_ROOT / path_str
+        
+        # Verificar que la ruta final esté dentro del PROJECT_ROOT
+        if not str(full_path.resolve()).startswith(str(PROJECT_ROOT.resolve())):
+            return {"success": False, "error": "Ruta fuera del sandbox del proyecto"}
+        
+        # Crear directorios padre si no existen
         full_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Escribir archivo
         with open(full_path, "w", encoding="utf-8") as f:
             f.write(content)
+        
+        logger.info(f"Archivo escrito exitosamente: {path_str}")
         return {"success": True}
     except Exception as e:
+        logger.error(f"Error escribiendo archivo {path_str}: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/v1/tools/filesystem/readFile")
+async def tool_read_file(request: Request):
+    """Capítulo 2.2.2: Herramienta readFile - Lee contenido de un archivo"""
+    data = await request.json()
+    path_str = data.get("path")
+    
+    # Validación de seguridad según Capítulo 2.1: Principio de Sandboxing
+    if not path_str or ".." in path_str or os.path.isabs(path_str):
+        return {"success": False, "error": "Ruta inválida o insegura"}
+    
+    try:
+        # Asegurar que la operación esté en el directorio del proyecto (sandboxing)
+        full_path = PROJECT_ROOT / path_str
+        
+        # Verificar que la ruta final esté dentro del PROJECT_ROOT
+        if not str(full_path.resolve()).startswith(str(PROJECT_ROOT.resolve())):
+            return {"success": False, "error": "Ruta fuera del sandbox del proyecto"}
+        
+        # Verificar que el archivo exista
+        if not full_path.exists():
+            return {"success": False, "error": "Archivo no encontrado"}
+        
+        # Leer archivo
+        with open(full_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        
+        logger.info(f"Archivo leído exitosamente: {path_str} ({len(content)} caracteres)")
+        return {"success": True, "content": content}
+    except Exception as e:
+        logger.error(f"Error leyendo archivo {path_str}: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/v1/tools/filesystem/listFiles")
+async def tool_list_files(request: Request):
+    """Capítulo 2.2.3: Herramienta listFiles - Lista archivos y directorios"""
+    data = await request.json()
+    path_str = data.get("path", ".")  # Por defecto, directorio actual
+    
+    # Validación de seguridad según Capítulo 2.1: Principio de Sandboxing
+    if ".." in path_str or os.path.isabs(path_str):
+        return {"success": False, "error": "Ruta inválida o insegura"}
+    
+    try:
+        # Asegurar que la operación esté en el directorio del proyecto (sandboxing)
+        full_path = PROJECT_ROOT / path_str
+        
+        # Verificar que la ruta final esté dentro del PROJECT_ROOT
+        if not str(full_path.resolve()).startswith(str(PROJECT_ROOT.resolve())):
+            return {"success": False, "error": "Ruta fuera del sandbox del proyecto"}
+        
+        # Verificar que el directorio exista
+        if not full_path.exists():
+            return {"success": False, "error": "Directorio no encontrado"}
+        
+        if not full_path.is_dir():
+            return {"success": False, "error": "La ruta especificada no es un directorio"}
+        
+        # Listar contenido del directorio
+        files = []
+        directories = []
+        
+        for item in full_path.iterdir():
+            relative_path = str(item.relative_to(PROJECT_ROOT))
+            if item.is_file():
+                files.append(relative_path)
+            elif item.is_dir():
+                directories.append(relative_path)
+        
+        logger.info(f"Directorio listado: {path_str} ({len(files)} archivos, {len(directories)} directorios)")
+        return {
+            "success": True, 
+            "files": sorted(files), 
+            "directories": sorted(directories)
+        }
+    except Exception as e:
+        logger.error(f"Error listando directorio {path_str}: {str(e)}")
         return {"success": False, "error": str(e)}
 
 # --- Endpoints de Gestión de Modelos Locales ---
@@ -655,15 +983,40 @@ async def cleanup_idle_models():
 async def report_agent_progress(run_id: str, request: Request):
     progress_data = await request.json()
     
-    # Retransmitir todos los mensajes, incluidos los de planificación
+    # VALIDACIÓN ESTRICTA DEL PROTOCOLO WEBSOCKET
+    # Asegurar que el mensaje siga el esquema {"source": "...", "type": "...", "data": {...}}
+    if not isinstance(progress_data, dict):
+        logger.error(f"Mensaje inválido de agente para {run_id}: no es un diccionario")
+        return {"status": "error", "message": "Mensaje debe ser un objeto JSON"}
+    
+    required_keys = ["source", "type", "data"]
+    missing_keys = [key for key in required_keys if key not in progress_data]
+    
+    if missing_keys:
+        logger.error(f"Mensaje inválido de agente para {run_id}: faltan claves {missing_keys}")
+        return {"status": "error", "message": f"Mensaje debe incluir: {', '.join(required_keys)}"}
+    
+    # Validar que 'data' sea un diccionario
+    if not isinstance(progress_data.get("data"), dict):
+        logger.error(f"Mensaje inválido de agente para {run_id}: 'data' debe ser un objeto")
+        return {"status": "error", "message": "Campo 'data' debe ser un objeto JSON"}
+    
+    # Validar 'source' y 'type' sean strings no vacíos
+    if not isinstance(progress_data.get("source"), str) or not progress_data.get("source").strip():
+        logger.error(f"Mensaje inválido de agente para {run_id}: 'source' debe ser string no vacío")
+        return {"status": "error", "message": "Campo 'source' debe ser un string no vacío"}
+    
+    if not isinstance(progress_data.get("type"), str) or not progress_data.get("type").strip():
+        logger.error(f"Mensaje inválido de agente para {run_id}: 'type' debe ser string no vacío")
+        return {"status": "error", "message": "Campo 'type' debe ser un string no vacío"}
+    
+    # PROTOCOLO VALIDADO - Retransmitir mensaje
     message_type = progress_data.get("type")
     
-    if message_type in ["plan_generated", "plan_updated"]:
-        # Mensajes de planificación: retransmitir directamente al TUI
-        logger.info(f"Retransmitiendo mensaje de planificación: {message_type}")
-        await manager.broadcast(run_id, progress_data)
-    else:
-        # Otros mensajes: retransmisión normal
-        await manager.broadcast(run_id, progress_data)
+    # Logging mejorado para debugging
+    logger.info(f"Retransmitiendo mensaje válido [{progress_data.get('source')}:{message_type}] para {run_id}")
+    
+    # Retransmitir el mensaje validado
+    await manager.broadcast(run_id, progress_data)
     
     return {"status": "reported"}
